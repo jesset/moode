@@ -995,7 +995,7 @@ function wrk_mpdconf($i2sdevice) {
 	// format audio input / resampler / output interfaces
 
 	// input
-	$output .= "max_connections \"20\"\n";
+	$output .= "max_connections \"40\"\n";
 	$output .= "\n";
 	$output .= "decoder {\n";
 	$output .= "plugin \"ffmpeg\"\n";
@@ -1522,7 +1522,7 @@ function startSps() {
 	debugLog('worker: Airplay metadata ' . ($_SESSION['airplaymeta'] == '1' ? 'on' : 'off'));
 
 	// format base cmd string
-	$cmd = '/usr/local/bin/shairport-sync -a "' . $_SESSION['airplayname'] . '" -S soxr -w -B /var/local/www/commandw/spspre.sh -E /var/local/www/commandw/spspost.sh ' . $metadata . '-- -d hw:' . $device;
+	$cmd = '/usr/bin/chrt --rr 99 /usr/local/bin/shairport-sync -a "' . $_SESSION['airplayname'] . '" -S soxr -w -B /var/local/www/commandw/spspre.sh -E /var/local/www/commandw/spspost.sh ' . $metadata . '-- -d hw:' . $device;
 
 	// add volume config
 	if ($_SESSION['airplayvol'] == 'auto') {
@@ -1600,7 +1600,8 @@ function cfgNetIfaces() {
 	$data  .= "# Please note that this file is written to be used with dhcpcd\n";
 	$data  .= "# For static IP, consult /etc/dhcpcd.conf and 'man dhcpcd.conf'\n\n";
 	$data  .= "# Include files from /etc/network/interfaces.d:\n";
-	$data  .= "source-directory /etc/network/interfaces.d\n";
+	$data  .= "# source-directory /etc/network/interfaces.d\n";
+	$data  .= "source /etc/network/interfaces.d/*.*\n";
 	fwrite($fp, $data);
 	fclose($fp);
 
