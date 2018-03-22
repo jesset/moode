@@ -167,7 +167,7 @@ function getImage($path) {
 function parseFolder($path) {
 	// default cover files
 	$covers = array('Folder.jpg', 'folder.jpg', 'Folder.jpeg', 'folder.jpeg', 'Folder.png', 'folder.png', 'Folder.tif', 'folder.tif', 'Folder.tiff', 'folder.tiff',
-		'Cover.jpg', 'cover.jpg', 'Cover.png', 'cover.png', 'Cover.tif', 'cover.tif', 'Cover.tiff', 'cover.tiff');
+		'Cover.jpg', 'cover.jpg', 'Cover.png', 'cover.png', 'Cover.tif', 'cover.tif', 'Cover.tiff', 'cover.tiff', 'front.png', 'front.jpg', 'Front.png', 'Front.jpg', 'cd.png', 'cd.jpg');
 	foreach ($covers as $file) {
 		getImage($path . $file);
 	}
