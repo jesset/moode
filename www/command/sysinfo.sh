@@ -58,8 +58,8 @@ AUDIO() {
 	RATE="$(cat /proc/asound/card0/pcm0p/sub0/hw_params | grep -w rate | cut -f 2 -d " ")"
 	[[ "$BITS" = "" ]] && OUTSTREAM="Closed" || OUTSTREAM="$BITS / $RATE"
 
-	ALSAVER="$(dpkg -l | awk '/libasound2:armhf/ { print  $3 }')"
-	SOXVER="$(dpkg -l | awk '/libsoxr0:armhf/ { print  $3 }')"
+	ALSAVER="$(dpkg -l | awk '/libasound2:/ { print  $3 }')"
+	SOXVER="$(dpkg -l | awk '/libsoxr0:/ { print  $3 }')"
 
 	if [[ $adevname = "none" ]]; then
 		[[ $device = "0" ]] && audiodevname="On-board audio device" || audiodevname="USB audio device"
