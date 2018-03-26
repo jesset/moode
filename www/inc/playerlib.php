@@ -1600,8 +1600,7 @@ function cfgNetIfaces() {
 	$data  .= "# Please note that this file is written to be used with dhcpcd\n";
 	$data  .= "# For static IP, consult /etc/dhcpcd.conf and 'man dhcpcd.conf'\n\n";
 	$data  .= "# Include files from /etc/network/interfaces.d:\n";
-	$data  .= "# source-directory /etc/network/interfaces.d\n";
-	$data  .= "source /etc/network/interfaces.d/*.*\n";
+	$data  .= "source-directory /etc/network/interfaces.d\n";
 	fwrite($fp, $data);
 	fclose($fp);
 
