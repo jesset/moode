@@ -60,5 +60,16 @@ if test -e $usb_flag; then
     lsmod | grep -qi $mod && modprobe -r $mod
   done
 
+else
+
+  echo "# Re-Schedule dwc_otg ...."
+  ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
+  do
+    taskset -p --cpu-list 0-1 $pid
+  done
+  echo "# DONE."
+  echo "# CPU Affinity for dwc_otg and mpd:"
+  ps -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args | grep -Pi -- '-dwc_otg|mpd' | grep -v grep
+
 fi
 
