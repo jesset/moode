@@ -1,1 +1,1 @@
-dwc_otg.dma_enable=1 dwc_otg.lpm_enable=0 dwc_otg.fiq_enable=0 dwc_otg.fiq_fsm_enable=0 dwc_otg.nak_holdoff=0 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=noop fsck.repair=yes rootwait loglevel=3 net.ifnames=0
+dwc_otg.dma_enable=1 dwc_otg.fiq_enable=0 dwc_otg.fiq_fsm_enable=0 dwc_otg.nak_holdoff=0 dwc_otg.lpm_enable=0 console=tty1 net.ifnames=0 biosdevname=0 root=/dev/mmcblk0p2 rootfstype=f2fs elevator=noop fsck.repair=yes rootwait loglevel=3 
