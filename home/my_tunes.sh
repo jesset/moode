@@ -2,9 +2,30 @@
 # Disable LED if intended to (touch /boot/NOLED)
 # Diable USB(Devices) if intended to (touch /boot/NOUSB),also unload *usb* modules
 # unbind Ethernet(eth0) if not in use (determined by Up/Down status, and addr)
+# Auto set CPU affinity for dwc_otg/mpd/squeezelite
 
-echo "# Re-generating OpenSSH Host keys if necessary ..."
-test -e /etc/ssh/ssh_host_rsa_key || dpkg-reconfigure openssh-server
+# set -x
+
+waitfor(){
+  proc=$1
+  expect_lwp_num=${2:-1}
+  timeout=${3:-10}
+  for c in $(seq 1 ${timeout});do
+    lwp_num=$(ps -eL -o pid,lwp,comm,args | grep -Pi -- ${proc} | grep -v grep | wc -l)
+    if [[ ${lwp_num} -lt ${expect_lwp_num} ]] ;then
+      echo "# Wait for ${proc} $c/$timeout"
+      sleep 1 && continue
+    else
+      break
+    fi
+  done
+}
+
+
+if ! test -e /etc/ssh/ssh_host_rsa_key ;then
+  echo "Regenerating OpenSSH server Host keys ..."
+  dpkg-reconfigure openssh-server
+fi
 
 # Disable LED on demand ...
 export led_flag=/boot/NOLED
@@ -61,15 +82,27 @@ if test -e $usb_flag; then
   done
 
 else
-
-  echo "# Re-Schedule dwc_otg ...."
-  ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
-  do
-    taskset -p --cpu-list 0-1 $pid
-  done
-  echo "# DONE."
-  echo "# CPU Affinity for dwc_otg and mpd:"
-  ps -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args | grep -Pi -- '-dwc_otg|mpd' | grep -v grep
+  # if using USB DAC
+  if cat /proc/asound/cards | grep -qi USB ;then
+    echo "# USB DAC detected, we need to:"
+    echo "#   1. Re-Schedule dwc_otg ...."
+    ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
+    do
+      taskset -p --cpu-list 0-1 $pid
+    done
+  
+    echo "#   2. Re-Schedule mpd/squeezelite ...."
+    squ_enabled=$(sqlite3 /var/local/www/db/moode-sqlite3.db  'select value from cfg_system where param="slsvc"')
+    [[ ${squ_enabled} -ne 0 ]] && waitfor squeezelite 3
+    waitfor mpd 4
+    ps -eL -o lwp,psr,comm,args | grep -Pi -- 'mpd|squeezelite' | grep -v grep | awk '{print $1}' | while read tid;
+    do
+      taskset -p --cpu-list 2-3  $tid
+    done
+  
+    echo "#   3. Final CPU Affinity for dwc_otg/mpd/squeezelite:"
+    ps -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args | grep -Pi -- '-dwc_otg|mpd|squeezelite' | grep -v grep
+  fi
 
 fi
 
