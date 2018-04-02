@@ -1,0 +1,13 @@
+[Unit]
+Description=Ntpdate on dhcpcded
+Documentation=man:ntpdate(8)
+DefaultDependencies=no
+After=rc-local.service
+
+[Service]
+ExecStart=/usr/sbin/ntpdate-debian
+Type=idle
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

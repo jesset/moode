@@ -1,0 +1,10 @@
+[Unit]
+Description=MoOde Player Tunes by jesset
+After=rc-local.service
+
+[Service]
+Type=idle
+ExecStart=/usr/local/bin/moode_tunes_jesset.sh
+
+[Install]
+WantedBy=multi-user.target
