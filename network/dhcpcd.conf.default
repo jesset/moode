@@ -4,6 +4,7 @@
 #########################################
 
 hostname
+ipv4only
 clientid
 persistent
 option rapid_commit
@@ -13,6 +14,12 @@ option ntp_servers
 option interface_mtu
 require dhcp_server_identifier
 slaac private
+# define static profile
+profile static_wlan0
+static ip_address=172.24.1.1/24
+# fallback to static profile on wlan0
+interface wlan0
+fallback static_wlan0
 #AP mode
 #interface wlan0
 #static ip_address=172.24.1.1/24
