@@ -9,7 +9,7 @@
 waitfor(){
   proc=$1
   expect_lwp_num=${2:-1}
-  timeout=${3:-10}
+  timeout=${3:-15}
   for c in $(seq 1 ${timeout});do
     lwp_num=$(ps -eL -o pid,lwp,comm,args | grep -Pi -- ${proc} | grep -v grep | wc -l)
     if [[ ${lwp_num} -lt ${expect_lwp_num} ]] ;then
