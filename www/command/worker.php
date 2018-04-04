@@ -199,7 +199,7 @@ if (!empty($eth0)) {
 	workerLog('worker: eth0 exists');
 	// Wait for address (default), setting is on system config
 	if ($_SESSION['eth0chk'] == '1') {
-		$eth0ip = waitForIpAddr('eth0', 3);
+		$eth0ip = waitForIpAddr('eth0', 10);
 	}
 	else {
 		$eth0ip = sysCmd("ip addr list eth0 | grep \"inet \" |cut -d' ' -f6|cut -d/ -f1");
