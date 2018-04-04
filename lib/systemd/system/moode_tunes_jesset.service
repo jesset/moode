@@ -1,9 +1,11 @@
 [Unit]
 Description=MoOde Player Tunes by jesset
-After=rc-local.service
+After=network-online.target
+Before=rc-local.service mpd.service
+Wants=network-online.target
 
 [Service]
-Type=idle
+Type=oneshot
 ExecStart=/usr/local/bin/moode_tunes_jesset.sh
 
 [Install]

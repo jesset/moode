@@ -1,0 +1,46 @@
+#!/bin/bash
+# Auto set CPU affinity for dwc_otg/mpd/squeezelite
+
+# set -x
+
+player=${1:-mpd} # could be mpd/squeezelite
+lwp_num=${2:-3}
+
+waitfor(){
+  proc=$1
+  expect_lwp_num=${2:-1}
+  timeout=${3:-10}
+  for c in $(seq 1 ${timeout});do
+    lwp_num=$(ps -eL -o pid,lwp,comm,args | grep -Pi -- ${proc} | grep -Pv 'grep|systemctl|sudo|/bin/bash' | wc -l)
+    if [[ ${lwp_num} -lt ${expect_lwp_num} ]] ;then
+      echo "# Wait for ${proc} $c/$timeout"
+      sleep 1 && continue
+    else
+      break
+    fi
+  done
+}
+
+
+# if using USB DAC
+if cat /proc/asound/cards | grep -qi USB ;then
+  echo "# USB DAC detected, we need to:"
+  echo "#   1. Re-Schedule dwc_otg ...."
+  ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
+  do
+    taskset -p --cpu-list 0-1 $pid
+  done
+
+  echo "#   2. Re-Schedule ${player} ...."
+  sleep 1 # startup ...
+  waitfor ${player} ${lwp_num}
+  ps -eL -o lwp,psr,comm,args | grep -Pi -- "${player}" | grep -Pv 'grep|systemctl|sudo|/bin/bash' | awk '{print $1}' | while read tid;
+  do
+    taskset -p --cpu-list 2-3  $tid
+  done
+
+  echo "#   3. Final CPU Affinity for dwc_otg/${player}:"
+  ps -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args | grep -Pi -- "-dwc_otg|${player}" | grep -v grep
+
+fi
+
