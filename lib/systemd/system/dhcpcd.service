@@ -1,8 +1,9 @@
 [Unit]
 Description=dhcpcd on all interfaces
 Wants=network.target
-Before=network.target
-After=network.target
+After=local-fs.target network-pre.target apparmor.service systemd-sysctl.service systemd-modules-load.service networking.service
+Before=network.target shutdown.target network-online.target
+Conflicts=shutdown.target
 
 [Service]
 Type=forking
@@ -12,4 +13,5 @@ ExecStop=/sbin/dhcpcd -x
 
 [Install]
 WantedBy=multi-user.target
+WantedBy=network-online.target
 Alias=dhcpcd5.service

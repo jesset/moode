@@ -1,13 +1,13 @@
 [Unit]
-Description=Ntpdate on dhcpcded
+Description=Ntpdate on network up
 Documentation=man:ntpdate(8)
 DefaultDependencies=no
-After=rc-local.service
+After=network-online.target rc-local.service
+Wants=network-online.target
 
 [Service]
 ExecStart=/usr/sbin/ntpdate-debian
-Type=idle
-RemainAfterExit=yes
+Type=oneshot
 
 [Install]
 WantedBy=multi-user.target
