@@ -18,17 +18,40 @@ if test -e $led_flag; then
 fi
 
 # unbind Ethernet(eth0) if not in use (determined by Up/Down status, and addr)
-if ip link show eth0 >/dev/null 2>&1 ;then
-  eth0_stat=$(ip addr show dev eth0 | grep -Po 'state \S+' | cut -d ' ' -f 2)
-  eth0_addr=$(ip addr show dev eth0 | grep -Po 'inet [\d\./]+' | cut -d ' ' -f 2)
-
-  if [[ "${eth0_stat}" == "UP" ]]||[[ x${eth0_addr} != "x" ]];then
-    echo "# eth0 is in use, skipped."
+for c in {1..60};do
+  echo "# Waiting for moOde fully startup for $c time."
+  if grep -q Ready /var/log/moode.log ;then
+    echo "# moOde fully ready, beginning detect eth0 ..."
+    eth0_stat=$(ip addr show dev eth0 | grep -Po 'state \S+' | cut -d ' ' -f 2)
+    eth0_addr=$(ip addr show dev eth0 | grep -Po 'inet [\d\./]+' | cut -d ' ' -f 2)
+    if [[ "${eth0_stat}" == "UP" ]]||[[ x${eth0_addr} != "x" ]];then
+      echo "# eth0 is in use, skipped."
+      break
+    else
+      eth0_usbid=$(cd /sys/bus/usb/drivers/smsc95xx/ && ls -d 1-* )
+      echo "$eth0_usbid" > /sys/bus/usb/drivers/smsc95xx/unbind
+      echo "# eth0 unbinded."
+      break
+      # dmesg | tail -3
+    fi
   else
-   eth0_usbid=$(cd /sys/bus/usb/drivers/smsc95xx/ && ls -d 1-* )
-   echo "$eth0_usbid" > /sys/bus/usb/drivers/smsc95xx/unbind
-   # dmesg | tail -3
+    sleep 1
+    continue
   fi
+done
+
+
+# Disable All USB Port (except Ethernet) if using i2c dac
+SQLDB=/var/local/www/db/moode-sqlite3.db
+i2sdev=$(sqlite3 $SQLDB "select value from cfg_system where param='i2sdevice'")
+if [[ ${i2sdev} == none  ]];then
+  echo "# You are using USB DAC (maybe)."
+else
+  echo "# You chosed I2S DAC."
+  for port in 2 3 4 5;do
+    /usr/local/bin/hub-ctrl -b 1 -d 2 -P $port -p 0
+    sleep 0.3
+  done
 fi
 
 # Diable USB(Devices) on demand
@@ -65,4 +88,3 @@ if test -e $usb_flag; then
   done
 
 fi
-
