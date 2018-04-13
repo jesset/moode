@@ -86,7 +86,27 @@ for (( i = 0; i < 1; i++ )); do
     ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
     do
       taskset -p --cpu-list 0-1 $pid
-    done    
+    done
+    # Find out USB DAC port id AND disable other USB ports
+    #  for card in /proc/asound/card* ;do
+    #    test -d $card || continue
+    #    test -e $card/usbid || continue
+    #    usbdac_dev_id=$(cat $card/usbid)
+    #    usbdac_dev_name=$(cat $card/id)
+    #    usbdac_port_id=$(lsusb -t -d ${usbdac_dev_id} | grep -Pi 'Driver=snd-usb-audio' | grep -Po 'Port \d+' | tail -1 | awk '{print $2}')
+    #  
+    #    if [[ -n $usbdac_dev_id ]]&&[[ -n $usbdac_port_id ]];then
+    #      echo "# Found USB DAC: name:${usbdac_dev_name}, id:${usbdac_dev_id}, port:${usbdac_port_id}"
+    #    fi
+    #  done
+    #  
+    #  for port in 2 3 4 5;do
+    #    if [[ ${port} -ne ${usbdac_port_id} ]] ;then
+    #      echo "# Disable USB Hub port $port (exclude USB-DAC port ${usbdac_port_id})..."
+    #      /usr/local/bin/hub-ctrl -b 1 -d 2 -P $port -p 0 && sleep 0.2
+    #    fi
+    #  done
+    #
   else
     echo "# You chosed I2S DAC."
     for port in 2 3 4 5;do
