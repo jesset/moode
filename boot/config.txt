@@ -1,0 +1,47 @@
+disable_splash=1
+hdmi_drive=2
+dtparam=i2c_arm=on
+dtparam=i2s=on
+dtparam=audio=on
+
+
+# Boot into 64bit mode
+arm_control=0x200
+
+# Audio playback only, no need to use more memory
+gpu_mem=16
+
+## Overclocking ...
+force_turbo=1
+# arm_freq=1440
+# core_freq=240
+# gpu_freq=100
+# over_voltage=8
+# sdram_freq=480
+# over_voltage_sdram_p=6
+# over_voltage_sdram_i=3
+# over_voltage_sdram_c=1
+# sdram_schmoo=0x02000020
+
+## under clocking ...
+h264_freq=150
+isp_freq=150
+v3d_freq=150
+h264_freq_min=100
+isp_freq_min=100
+v3d_freq_min=100
+
+
+initial_turbo=10
+disable_pvt=1
+start_x=0
+dtparam=i2c_vc=off
+dtparam=spi=off
+enable_uart=0
+dtparam=uart0=off
+dtparam=uart1=off
+
+
+
+#dtoverlay=pi3-disable-wifi
+dtoverlay=pi3-disable-bt
