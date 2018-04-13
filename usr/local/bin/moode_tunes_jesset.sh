@@ -104,8 +104,16 @@ pgrep 'irq/7.*mmc' | while read tid;do
   taskset -p --cpu-list 0-1 $tid
   chrt --fifo -p 33 $tid
 done
-sleep 0.5
+sleep 0.3
 ps -q $(pgrep -d, 'irq/7.*mmc')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
+
+
+echo "# Adjust DMA irq affinity ..."
+pgrep 'DMA' | while read tid;do
+  taskset -p --cpu-list 0-1 $tid
+done
+sleep 0.3
+ps -q $(pgrep -d, 'DMA')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
 
 
 #/boot/cmdline.txt
