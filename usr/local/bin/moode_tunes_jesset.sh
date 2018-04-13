@@ -7,8 +7,8 @@
 # set -x
 
 export SQLDB=/var/local/www/db/moode-sqlite3.db
-export usb_flag=/boot/NOUSB
-export led_flag=/boot/NOLED
+export nousb_flag=/boot/NOUSB
+export noled_flag=/boot/NOLED
 
 
 unload_eth0(){
@@ -28,20 +28,20 @@ unload_all_usbdev(){
     fi
   done
 
-  # unbind USB devices, then USB hub ...
+  echo "# unbind USB devices ..."
   if [[ x$$usbdev_unbind != "x" ]];then
     usbdev_unbind_r=$(echo $usbdev_unbind | tr ' ' '\n' | tac | tr '\n' ' ')
     for usbid in $usbdev_unbind_r ;do
       echo  $usbid > /sys/bus/usb/drivers/usb/unbind
     done
   fi
-
+  echo "# unbind USB hub..."
   ( cd /sys/bus/usb/drivers/hub/; ls -1 )| grep -Po '\d+-[\d\.:]+' | \
   while read usbhubid;do
     [[ -n "$usbhubid" ]] && echo "$usbhubid" > /sys/bus/usb/drivers/hub/unbind || true
   done
 
-  # unload **USB** modules
+  echo "# unload usb relative modules"
   for mod in snd_usb_audio usbhid hid_generic ;do
     lsmod | grep -qi $mod && modprobe -r $mod
   done
@@ -55,49 +55,69 @@ if ! test -e /etc/ssh/ssh_host_rsa_key ;then
 fi
 
 # Disable LED on demand ...
-echo "# Disable LEDs if defined $led_flag ..."
-if test -e $led_flag; then
+if test -e $noled_flag; then
+  echo "# Disable LEDs, defined $noled_flag ..."
   echo none | tee /sys/class/leds/*/trigger
 fi
 
 
-eth0chk=$(sqlite3 $SQLDB "select value from cfg_system where param='eth0chk'")
-i2sdev=$(sqlite3 $SQLDB "select value from cfg_system where param='i2sdevice'")
+eth0chk=$(sqlite3 $SQLDB "PRAGMA query_only=1; PRAGMA busy_timeout=5000; select value from cfg_system where param='eth0chk'" | tail -1)
+ i2sdev=$(sqlite3 $SQLDB "PRAGMA query_only=1; PRAGMA busy_timeout=5000; select value from cfg_system where param='i2sdevice'" | tail -1)
 
+echo "# USB tunning..."
 for (( i = 0; i < 1; i++ )); do
-
-  # Disable All USB Port, if any:
+  # Condition 1: Disable All USB Port, if any:
   # 1. using i2c dac && eth0 not enabled
   # 2. /boot/NOUSB touched
-  if ( [[ ${eth0chk} -eq 0  ]] && [[ ${i2sdev} != none  ]] ) || test -e $usb_flag ; then
+  if ( [[ ${eth0chk} -eq 0  ]] && [[ "${i2sdev}" != none  ]] ) || test -e $nousb_flag ; then
+    echo "# unload all usb port, eth0chk=${eth0chk}, i2sdev=${i2sdev}"
     unload_all_usbdev
     break
   fi
 
   if [[ ${eth0chk} -eq 0  ]];then
+    echo "# 'wait for eth0' not set in moode webui"
     unload_eth0
   fi
 
-  # Disable All USB Port (except Ethernet) if using i2c dac
-  if [[ ${i2sdev} != none  ]];then
+  if [[ "${i2sdev}" == none  ]];then
+    echo "# You use USB DAC maybe,"
+    echo "# Re-Schedule dwc_otg .... to CPU 0-1"
+    ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
+    do
+      taskset -p --cpu-list 0-1 $pid
+    done    
+  else
     echo "# You chosed I2S DAC."
     for port in 2 3 4 5;do
+      echo "# Disable USB Hub port $port ..."
       /usr/local/bin/hub-ctrl -b 1 -d 2 -P $port -p 0
       sleep 0.3
     done
   fi
-
 done
+
+
+echo "# MMC0/1 (SDcard/WiFI) tunning..."
+echo "# Adjust mmc0/1 cpu affinity/rtprio ..."
+pgrep 'irq/7.*mmc' | while read tid;do
+  taskset -p --cpu-list 0-1 $tid
+  chrt --fifo -p 33 $tid
+done
+sleep 0.5
+ps -q $(pgrep -d, 'irq/7.*mmc')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
+
 
 #/boot/cmdline.txt
 # nohz_full=1,2,3
 #
 if grep -q nohz_full /boot/cmdline.txt ;then
+  echo "# adjusting rcu_sched/rcu_preempt ..."
   for i in `pgrep rcu[^c]` ; do taskset -pc 0 $i ; done
   echo 1 | tee /sys/bus/workqueue/devices/writeback/cpumask
 fi
 
-# Finally, unbind Ethernet(eth0) if not in use (determined by Up/Down status, and addr)
+echo '# Finally, unbind Ethernet(eth0) if it is not ACTULLY in use (determined by Up/Down status, and addr)'
 if ip link show eth0 >/dev/null 2>&1 ;then
   for c in {1..60};do
     echo "# Waiting for moOde fully startup for $c time."

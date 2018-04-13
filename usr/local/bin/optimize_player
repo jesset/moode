@@ -22,25 +22,35 @@ waitfor(){
 }
 
 
-# if using USB DAC
-if cat /proc/asound/cards | grep -qi USB ;then
-  echo "# USB DAC detected, we need to:"
-  echo "#   1. Re-Schedule dwc_otg ...."
-  ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
-  do
-    taskset -p --cpu-list 0-1 $pid
-  done
+echo "#  Re-Schedule ${player} ...."
+sleep 1 # wait for startup ...
+waitfor ${player} ${lwp_num}
 
-  echo "#   2. Re-Schedule ${player} ...."
-  sleep 1 # startup ...
-  waitfor ${player} ${lwp_num}
-  ps -eL -o lwp,psr,comm,args | grep -Pi -- "${player}" | grep -Pv 'grep|systemctl|sudo|/bin/bash' | awk '{print $1}' | while read tid;
-  do
-    taskset -p --cpu-list 2-3  $tid
-  done
+case "${player}" in
+  mpd)
+    # Sometimes... rtio_tid/output_tid not appear, for safety set master process first
+    export master_pid=$(pidof mpd)
+    taskset -p --cpu-list 2-3  $master_pid
 
-  echo "#   3. Final CPU Affinity for dwc_otg/${player}:"
-  ps -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args | grep -Pi -- "-dwc_otg|${player}" | grep -v grep
+    rtio_tid=$(pstree -Aup $master_pid| grep rtio| grep -Po '\d+')
+    output_tid=$(pstree -Aup $master_pid| grep output| grep -Po '\d+')
+    [[ -n $rtio_tid ]] && taskset -p --cpu-list 2  $rtio_tid
+    [[ -n $output_tid ]] && taskset -p --cpu-list 3  $output_tid
 
-fi
+    ps -eL -o lwp,psr,cls,comm,args|awk '($5~"mpd" && ($4=="mpd" || $4=="player" || $4~"decoder" || $4=="io" || $4=="update")){print $1}'| while read tid;
+    do
+      taskset -p --cpu-list 0-3  $tid
+    done
+  ;;
+  squeezelite)
+    ps -eL -o lwp,psr,comm,args | grep -Pi -- "${player}" | grep -Pv 'grep|systemctl|sudo|/bin/bash' | awk '{print $1}' | while read tid;
+    do
+      taskset -p --cpu-list 2-3  $tid
+    done
+  ;;
+
+esac
+
+echo "#  Final CPU Affinity status for dwc_otg/${player}:"
+ps -q $(pgrep -d, 'dwc_otg|mpd|squeezelite') -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
 
