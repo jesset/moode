@@ -60,6 +60,10 @@ if test -e $noled_flag; then
   echo none | tee /sys/class/leds/*/trigger
 fi
 
+# sysctl ...
+echo 1 > /proc/sys/kernel/sched_nr_migrate
+
+
 
 eth0chk=$(sqlite3 $SQLDB "PRAGMA query_only=1; PRAGMA busy_timeout=5000; select value from cfg_system where param='eth0chk'" | tail -1)
  i2sdev=$(sqlite3 $SQLDB "PRAGMA query_only=1; PRAGMA busy_timeout=5000; select value from cfg_system where param='i2sdevice'" | tail -1)
@@ -86,54 +90,35 @@ for (( i = 0; i < 1; i++ )); do
     ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
     do
       taskset -p --cpu-list 0-1 $pid
-    done
-    # Find out USB DAC port id AND disable other USB ports
-    #  for card in /proc/asound/card* ;do
-    #    test -d $card || continue
-    #    test -e $card/usbid || continue
-    #    usbdac_dev_id=$(cat $card/usbid)
-    #    usbdac_dev_name=$(cat $card/id)
-    #    usbdac_port_id=$(lsusb -t -d ${usbdac_dev_id} | grep -Pi 'Driver=snd-usb-audio' | grep -Po 'Port \d+' | tail -1 | awk '{print $2}')
-    #  
-    #    if [[ -n $usbdac_dev_id ]]&&[[ -n $usbdac_port_id ]];then
-    #      echo "# Found USB DAC: name:${usbdac_dev_name}, id:${usbdac_dev_id}, port:${usbdac_port_id}"
-    #    fi
-    #  done
-    #  
-    #  for port in 2 3 4 5;do
-    #    if [[ ${port} -ne ${usbdac_port_id} ]] ;then
-    #      echo "# Disable USB Hub port $port (exclude USB-DAC port ${usbdac_port_id})..."
-    #      /usr/local/bin/hub-ctrl -b 1 -d 2 -P $port -p 0 && sleep 0.2
-    #    fi
-    #  done
-    #
+    done    
   else
     echo "# You chosed I2S DAC."
     for port in 2 3 4 5;do
-      echo "# Disable USB Hub port $port ..."
+      echo "#   Disable USB Hub port $port ..."
       /usr/local/bin/hub-ctrl -b 1 -d 2 -P $port -p 0
       sleep 0.3
     done
   fi
 done
 
+if [[ "${i2sdev}" != none  ]];then
+  echo "# I2S DAC used, further tunning..."
+  echo "#   MMC0/1 (SDcard/WiFI), Adjust mmc0/1 cpu affinity/rtprio ..."
+  pgrep 'irq/7.*mmc' | while read tid;do
+    taskset -p --cpu-list 0-1 $tid
+    #chrt --fifo -p 33 $tid
+  done
+  sleep 0.3
+  
+  echo "#   Adjust DMA irq affinity ..."
+  pgrep 'DMA' | while read tid;do
+    taskset -p --cpu-list 0-1 $tid
+  done
+  sleep 0.3
+  ps -q $(pgrep -d, 'irq/7.*mmc|DMA')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
 
-echo "# MMC0/1 (SDcard/WiFI) tunning..."
-echo "# Adjust mmc0/1 cpu affinity/rtprio ..."
-pgrep 'irq/7.*mmc' | while read tid;do
-  taskset -p --cpu-list 0-1 $tid
-  chrt --fifo -p 33 $tid
-done
-sleep 0.3
-ps -q $(pgrep -d, 'irq/7.*mmc')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
+fi
 
-
-echo "# Adjust DMA irq affinity ..."
-pgrep 'DMA' | while read tid;do
-  taskset -p --cpu-list 0-1 $tid
-done
-sleep 0.3
-ps -q $(pgrep -d, 'DMA')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
 
 
 #/boot/cmdline.txt
@@ -144,6 +129,11 @@ if grep -q nohz_full /boot/cmdline.txt ;then
   for i in `pgrep rcu[^c]` ; do taskset -pc 0 $i ; done
   echo 1 | tee /sys/bus/workqueue/devices/writeback/cpumask
 fi
+
+# To keep all CPUs with the same rt_runtime, disable the NO_RT_RUNTIME_SHARE logic
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/real_time_throttling
+# echo NO_RT_RUNTIME_SHARE > /sys/kernel/debug/sched_features
+
 
 echo '# Finally, unbind Ethernet(eth0) if it is not ACTULLY in use (determined by Up/Down status, and addr)'
 if ip link show eth0 >/dev/null 2>&1 ;then
@@ -166,3 +156,4 @@ if ip link show eth0 >/dev/null 2>&1 ;then
     fi
   done
 fi
+

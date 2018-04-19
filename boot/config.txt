@@ -42,6 +42,5 @@ dtparam=uart0=off
 dtparam=uart1=off
 
 
-
 #dtoverlay=pi3-disable-wifi
 dtoverlay=pi3-disable-bt
