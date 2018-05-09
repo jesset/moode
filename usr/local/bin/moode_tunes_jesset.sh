@@ -101,38 +101,34 @@ for (( i = 0; i < 1; i++ )); do
   fi
 done
 
-if [[ "${i2sdev}" != none  ]];then
-  echo "# I2S DAC used, further tunning..."
-  echo "#   MMC0/1 (SDcard/WiFI), Adjust mmc0/1 cpu affinity/rtprio ..."
-  pgrep 'irq/7.*mmc' | while read tid;do
-    taskset -p --cpu-list 0-1 $tid
-    #chrt --fifo -p 33 $tid
-  done
-  sleep 0.3
-  
-  echo "#   Adjust DMA irq affinity ..."
-  pgrep 'DMA' | while read tid;do
-    taskset -p --cpu-list 0-1 $tid
-  done
-  sleep 0.3
-  ps -q $(pgrep -d, 'irq/7.*mmc|DMA')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
-
-fi
-
-
-
-#/boot/cmdline.txt
-# nohz_full=1,2,3
+#if [[ "${i2sdev}" != none  ]];then
+#  echo "# I2S DAC used, further tunning..."
+#  echo "#   MMC0/1 (SDcard/WiFI), Adjust mmc0/1 cpu affinity/rtprio ..."
+#  echo "#   Adjust DMA irq affinity ..."
+#  pgrep 'mmc|DMA|kblockd' | while read tid;do
+#    taskset -p --cpu-list 0-1 $tid
+#    #chrt --fifo -p 33 $tid
+#  done
+#  sleep 0.3
+#  
+#  ps -q $(pgrep -d, 'mmc|DMA|kblockd')  -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
 #
-if grep -q nohz_full /boot/cmdline.txt ;then
-  echo "# adjusting rcu_sched/rcu_preempt ..."
-  for i in `pgrep rcu[^c]` ; do taskset -pc 0 $i ; done
-  echo 1 | tee /sys/bus/workqueue/devices/writeback/cpumask
-fi
+#fi
+
+
+# Reduce OS jitter
+echo "# adjusting rcu_sched/rcu_preempt ..."
+for i in `pgrep rcu[^c]` ; do taskset -pc 0,1 $i ; done
+echo 3 | tee /sys/bus/workqueue/devices/writeback/cpumask
 
 # To keep all CPUs with the same rt_runtime, disable the NO_RT_RUNTIME_SHARE logic
 # https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_for_real_time/7/html/tuning_guide/real_time_throttling
 # echo NO_RT_RUNTIME_SHARE > /sys/kernel/debug/sched_features
+
+#echo 0 > /proc/sys/kernel/watchdog
+#echo 60 > /proc/sys/kernel/watchdog_thresh
+sysctl -w vm.stat_interval=120
+echo 1 > /proc/sys/kernel/softlockup_all_cpu_backtrace
 
 
 echo '# Finally, unbind Ethernet(eth0) if it is not ACTULLY in use (determined by Up/Down status, and addr)'
@@ -156,4 +152,50 @@ if ip link show eth0 >/dev/null 2>&1 ;then
     fi
   done
 fi
+
+if ip link show wlan0 >/dev/null 2>&1 ;then
+  iwconfig wlan0 frag 512
+  iwconfig wlan0 rts 250
+  iwconfig wlan0 retry short 6
+fi
+
+
+# Automatic mount USB Storage
+export usb_mount=/tmp/usb_mount.lock
+export mount_opts="noexec,nodev,noatime,nodiratime"
+
+lsblk --pairs --noheadings --paths --bytes \
+      --exclude 179,7 \
+      --output name,size,type,rm,uuid,label,fstype | \
+while read line ;do
+ eval "$line"
+ # only mount removable media and 
+ if [[ $RM == 1 ]] && [[ $TYPE != "disk" ]] && [[ "$LABEL" != "EFI" ]];then
+   echo "INFO: new volume to mount: type=$TYPE name=$NAME uuid=$UUID label='$LABEL'"
+   if findmnt -nl --source $NAME ;then
+     echo "INFO: $NAME already mounted, skip."
+   else
+     [[ x$LABEL != x ]] && target=/media/"$LABEL" || target=/media/"$UUID"
+     test -d "$target" || mkdir -v "$target"
+     case "$FSTYPE" in
+       vfat)
+         mount_opts+=",dmask=0000,fmask=0000,umask=0000"
+       ;;
+       ntfs)
+         mount_opts+=",dmask=0022,fmask=0022"
+       ;;
+     esac
+     mount -o $mount_opts $NAME "$target" && \
+       touch $usb_mount && \
+       echo "INFO: mounted $NAME to '$target'"
+   fi
+ fi
+ unset RM TYPE LABEL UUID
+done
+
+test -e $usb_mount && mpc update USB && rm -f $usb_mount 
+
+
+
+echo "Finished."
 

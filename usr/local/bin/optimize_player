@@ -1,5 +1,5 @@
 #!/bin/bash
-# Auto set CPU affinity for dwc_otg/mpd/squeezelite
+# Auto set CPU affinity for mpd/squeezelite
 
 # set -x
 
@@ -29,33 +29,44 @@ waitfor ${player} ${lwp_num}
 case "${player}" in
   mpd)
     # Sometimes... rtio_tid/output_tid not appear, for safety set master process first
-    export master_pid=$(pidof mpd)
-    echo "# Change MPD master process affinity..."
-    taskset -p --cpu-list 2-3  $master_pid
+    # export master_pid=$(pidof mpd)
+    # echo "# Change MPD master process affinity..."
+    # taskset -p --cpu-list 2-3  $master_pid
 
-    # rtio_tid=$(pstree -Aup $master_pid| grep rtio| grep -Po '\d+')
-    # output_tid=$(pstree -Aup $master_pid| grep output| grep -Po '\d+')
-    # if [[ -n $rtio_tid ]];then
-    #   echo "# Change mpd:rtio thread affinity..."
-    #   taskset -p --cpu-list 2  $rtio_tid
-    # fi
-    # if [[ -n $output_tid ]];then
-    #   echo "# Change mpd:output thread affinity..."
-    #   taskset -p --cpu-list 3  $output_tid
-    # fi
+    rtio_tid=$(pstree -Aup $master_pid| grep rtio| grep -Po '\d+')
+    output_tid=$(pstree -Aup $master_pid| grep output| grep -Po '\d+')
+    if [[ -n $rtio_tid ]];then
+      echo "# Change mpd:rtio thread affinity..."
+      taskset -p --cpu-list 2  $rtio_tid
+    fi
+    if [[ -n $output_tid ]];then
+      echo "# Change mpd:output thread affinity..."
+      taskset -p --cpu-list 3  $output_tid
+    fi
 
     echo "# Change other mpd low-prio thread affinity to spread all cpus ..."
     ps -eL -o lwp,psr,cls,comm,args|awk '($5~"mpd" && ($4=="mpd" || $4=="player" || $4~"decoder" || $4=="io" || $4=="update")){print $1}'| while read tid;
     do
-      taskset -p --cpu-list 0-3  $tid
-      chrt --rr -p 30 $tid
+     taskset -p --cpu-list 2  $tid
+     chrt --rr -p 30 $tid
     done
   ;;
   squeezelite)
-    ps -eL -o lwp,psr,comm,args | grep -Pi -- "${player}" | grep -Pv 'grep|systemctl|sudo|/bin/bash' | awk '{print $1}' | while read tid;
-    do
-      taskset -p --cpu-list 2-3  $tid
+    # ps -eL -o lwp,psr,comm,args | grep -Pi -- "${player}" | grep -Pv 'grep|systemctl|sudo|/bin/bash' | awk '{print $1}' | while read tid;
+    # do
+    #   taskset -p --cpu-list 2-3  $tid
+    # done
+
+    # get tid list, FF first 
+    sqlplist=( $(ps -q $(pgrep -d, ${player}) -eL -o lwp,cls,psr,comm,args | awk -v player=${player} '($4 ~ player){ if($2 == "FF"){ ffp=$1 }else{ tsp= tsp" "$1} }END{print ffp,tsp}' ) )
+    
+    # FF tid
+    taskset -p --cpu-list 3  ${sqlplist[0]}
+    # TS tid
+    for tid in ${sqlplist[@]:1} ;do
+    taskset -p --cpu-list 2  $tid
     done
+
   ;;
 
 esac
