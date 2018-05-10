@@ -369,7 +369,7 @@ kernel=${arr[59]}
 [[ "${arr[60]}" = "1" ]] && slsvc="On" || slsvc="Off"
 hdmiport=${arr[61]}
 cpugov=${arr[62]}
-[[ "${arr[63]}" = "other" ]] && mpdsched="TS" || mpdsched=${arr[67]}
+[[ "${arr[63]}" = "other" ]] && mpdsched="TS" || mpdsched=${arr[63]}
 pkgid=${arr[64]}
 airplayvol=${arr[65]}
 [[ "${arr[66]}" = "0" ]] && mpdcrossfade="Off" || mpdcrossfade=${arr[66]}

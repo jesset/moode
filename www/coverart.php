@@ -168,7 +168,7 @@ function getImage($path) {
 function parseFolder($path) {
 	// default cover files
 	$covers = array('Folder.jpg', 'folder.jpg', 'Folder.jpeg', 'folder.jpeg', 'Folder.png', 'folder.png', 'Folder.tif', 'folder.tif', 'Folder.tiff', 'folder.tiff',
-		'Cover.jpg', 'cover.jpg', 'Cover.png', 'cover.png', 'Cover.tif', 'cover.tif', 'Cover.tiff', 'cover.tiff', 'front.png', 'front.jpg', 'Front.png', 'Front.jpg', 'cd.png', 'cd.jpg');
+               'Cover.jpg', 'cover.jpg', 'Cover.png', 'cover.png', 'Cover.tif', 'cover.tif', 'Cover.tiff', 'cover.tiff', 'front.png', 'front.jpg', 'Front.png', 'Front.jpg', 'cd.png', 'cd.jpg');
 	foreach ($covers as $file) {
 		getImage($path . $file);
 	}
@@ -219,7 +219,15 @@ if (is_dir($path)) {
 }
 else {
 	// file - try all files in containing folder
-	$dirpath = pathinfo($path, PATHINFO_DIRNAME) . '/';
+	$dirpath = pathinfo($path, PATHINFO_DIRNAME);
+	$dirpath_suffix = substr($dirpath, -4) ;
+
+	if ($dirpath_suffix == ".iso" || $dirpath_suffix == ".ISO"){
+          // go uppper dir
+	  $dirpath = pathinfo($dirpath, PATHINFO_DIRNAME) ;
+	}
+
+	$dirpath .= '/';
 
 	//workerLog('coverart: c - ' . $dirpath);
 	parseFolder($dirpath);

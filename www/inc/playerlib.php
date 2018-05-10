@@ -1089,7 +1089,7 @@ function wrk_mpdconf($i2sdevice) {
 	// format audio input / resampler / output interfaces
 
 	// input
-	$output .= "max_connections \"40\"\n";
+	$output .= "max_connections \"20\"\n";
 	$output .= "\n";
 	$output .= "decoder {\n";
 	$output .= "plugin \"ffmpeg\"\n";
@@ -1608,7 +1608,7 @@ function startSps() {
 	$mixername = $_SESSION['amixname'];
 
 	// format base cmd string
-	$cmd = '/usr/local/bin/shairport-sync -a "' . $_SESSION['airplayname'] . '" -S soxr -w -B /var/local/www/commandw/spspre.sh -E /var/local/www/commandw/spspost.sh ' . '-- -d hw:' . $device;
+	$cmd = '/usr/bin/taskset --cpu-list 2,3 /usr/local/bin/shairport-sync -a "' . $_SESSION['airplayname'] . '" -S soxr -w -B /var/local/www/commandw/spspre.sh -E /var/local/www/commandw/spspost.sh ' . '-- -d hw:' . $device;
 
 	// add volume config
 	if ($_SESSION['airplayvol'] == 'auto') {
