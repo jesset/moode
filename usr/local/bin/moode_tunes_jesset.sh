@@ -42,9 +42,16 @@ unload_all_usbdev(){
   done
 
   echo "# unload usb relative modules"
-  for mod in snd_usb_audio usbhid hid_generic ;do
-    lsmod | grep -qi $mod && modprobe -r $mod
-  done
+  modules_unload=$(lsmod | sed 1d | awk '{print $3,$1}' | egrep -i 'usb|hid' | sort -n | awk '{print $2}' | tr '\n' ' ')
+  modules_unload=($modules_unload)
+  if [[ ${#modules_unload[@]} -gt 0 ]];then
+    echo "# modules to be unload:  ${modules_unload[@]}"
+    sleep 3
+    for ((i=0; i<${#modules_unload[@]}; i++))
+    do
+      modprobe -r ${modules_unload[$i]}
+    done
+  fi
 }
 
 ###
@@ -128,8 +135,7 @@ echo 3 | tee /sys/bus/workqueue/devices/writeback/cpumask
 #echo 0 > /proc/sys/kernel/watchdog
 #echo 60 > /proc/sys/kernel/watchdog_thresh
 sysctl -w vm.stat_interval=120
-echo 1 > /proc/sys/kernel/softlockup_all_cpu_backtrace
-
+sysctl -w kernel.softlockup_all_cpu_backtrace=1
 
 echo '# Finally, unbind Ethernet(eth0) if it is not ACTULLY in use (determined by Up/Down status, and addr)'
 if ip link show eth0 >/dev/null 2>&1 ;then
@@ -170,7 +176,7 @@ lsblk --pairs --noheadings --paths --bytes \
 while read line ;do
  eval "$line"
  # only mount removable media and 
- if [[ $RM == 1 ]] && [[ $TYPE != "disk" ]] && [[ "$LABEL" != "EFI" ]];then
+ if [[ $TYPE != "disk" ]] && [[ "$LABEL" != "EFI" ]];then
    echo "INFO: new volume to mount: type=$TYPE name=$NAME uuid=$UUID label='$LABEL'"
    if findmnt -nl --source $NAME ;then
      echo "INFO: $NAME already mounted, skip."
