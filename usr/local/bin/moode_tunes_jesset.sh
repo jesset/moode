@@ -12,9 +12,18 @@ export noled_flag=/boot/NOLED
 
 
 unload_eth0(){
-  eth0_usbid=$(cd /sys/bus/usb/drivers/smsc95xx/ && ls -d 1-* )
-  echo "$eth0_usbid" > /sys/bus/usb/drivers/smsc95xx/unbind
-  echo "# eth0 unbinded."
+  # Pi 3B
+  if test -d /sys/bus/usb/drivers/smsc95xx/;then
+    eth0_usbid=$(cd /sys/bus/usb/drivers/smsc95xx/ && ls -d 1-* )
+    [[ -n $eth0_usbid ]] && echo "$eth0_usbid" > /sys/bus/usb/drivers/smsc95xx/unbind \
+      && echo "# eth0 unbinded."
+  fi
+  # Pi 3B Plus
+  if test -d /sys/bus/usb/drivers/lan78xx/;then
+    eth0_usbid_plus=$(cd /sys/bus/usb/drivers/lan78xx/ && ls -d 1-* )
+    [[ -n $eth0_usbid_plus ]] && echo "$eth0_usbid_plus" > /sys/bus/usb/drivers/lan78xx/unbind \
+      && echo "# eth0 unbinded."
+  fi
 }
 
 unload_all_usbdev(){
@@ -168,7 +177,7 @@ fi
 
 # Automatic mount USB Storage
 export usb_mount=/tmp/usb_mount.lock
-export mount_opts="noexec,nodev,noatime,nodiratime"
+export mount_opts="ro,noexec,nodev,noatime,nodiratime"
 
 lsblk --pairs --noheadings --paths --bytes \
       --exclude 179,7 \
