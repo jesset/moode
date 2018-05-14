@@ -3,6 +3,8 @@
 
 echo
 echo "--------- Version ---------"
+cat /sys/firmware/devicetree/base/model;echo
+#cat /sys/firmware/devicetree/base/serial-number
 sudo vcgencmd version
 
 echo
