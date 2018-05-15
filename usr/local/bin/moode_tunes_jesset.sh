@@ -155,7 +155,8 @@ if ip link show eth0 >/dev/null 2>&1 ;then
       eth0_stat=$(ip addr show dev eth0 | grep -Po 'state \S+' | cut -d ' ' -f 2)
       eth0_addr=$(ip addr show dev eth0 | grep -Po 'inet [\d\./]+' | cut -d ' ' -f 2)
       if [[ "${eth0_stat}" == "UP" ]]||[[ x${eth0_addr} != "x" ]];then
-        echo "# eth0 is in use, skipped."
+        echo "# eth0 is in use, tunning..."
+	ethtool --set-eee eth0  eee off
         break
       else
         unload_eth0

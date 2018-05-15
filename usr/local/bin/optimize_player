@@ -29,9 +29,9 @@ waitfor ${player} ${lwp_num}
 case "${player}" in
   mpd)
     # Sometimes... rtio_tid/output_tid not appear, for safety set master process first
-    # export master_pid=$(pidof mpd)
-    # echo "# Change MPD master process affinity..."
-    # taskset -p --cpu-list 2-3  $master_pid
+    export master_pid=$(pidof mpd)
+    echo "# Change MPD master process affinity..."
+    taskset -p --cpu-list 2-3  $master_pid
 
     rtio_tid=$(pstree -Aup $master_pid| grep rtio| grep -Po '\d+')
     output_tid=$(pstree -Aup $master_pid| grep output| grep -Po '\d+')
