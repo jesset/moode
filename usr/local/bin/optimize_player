@@ -11,9 +11,9 @@ waitfor(){
   expect_lwp_num=${2:-1}
   timeout=${3:-10}
   for c in $(seq 1 ${timeout});do
-    lwp_num=$(ps -eL -o pid,lwp,comm,args | grep -Pi -- ${proc} | grep -Pv 'grep|systemctl|sudo|/bin/bash' | wc -l)
+    lwp_num=$(pgrep -wc ${proc})
     if [[ ${lwp_num} -lt ${expect_lwp_num} ]] ;then
-      echo "# Wait for ${proc} $c/$timeout"
+      echo "# WARN: wait for ${proc} $c/$timeout, current lwp_num=${lwp_num}, expected ${expect_lwp_num}"
       sleep 1 && continue
     else
       break
@@ -22,41 +22,44 @@ waitfor(){
 }
 
 
-echo "#  Re-Schedule ${player} ...."
-sleep 1 # wait for startup ...
+echo "# INFO: Re-Schedule ${player} ...."
+
 waitfor ${player} ${lwp_num}
 
 case "${player}" in
   mpd)
     # Sometimes... rtio_tid/output_tid not appear, for safety set master process first
-    export master_pid=$(pidof mpd)
-    echo "# Change MPD master process affinity..."
-    taskset -p --cpu-list 2-3  $master_pid
+    export master_pid=$(pidof mpd||pgrep mpd||cat /var/run/mpd/pid)
+    if [[ -n $master_pid ]];then
+      echo "# INFO: Change MPD master process affinity..."
+      taskset -p --cpu-list 2-3  $master_pid
+    else
+      echo "# ERROR: MPD master process pid not got!!!"
+    fi
 
-    rtio_tid=$(pstree -Aup $master_pid| grep rtio| grep -Po '\d+')
-    output_tid=$(pstree -Aup $master_pid| grep output| grep -Po '\d+')
+    rtio_tid=$(ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($4~"rtio"){print $1}')
+    output_tid=$(ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($4~"output"){print $1}')
     if [[ -n $rtio_tid ]];then
-      echo "# Change mpd:rtio thread affinity..."
+      echo "# INFO: change mpd:rtio thread affinity..."
       taskset -p --cpu-list 2  $rtio_tid
+    else
+      echo "# ERROR: mpd:rtio thread id not got!!!"
     fi
     if [[ -n $output_tid ]];then
-      echo "# Change mpd:output thread affinity..."
+      echo "# INFO: change mpd:output thread affinity..."
       taskset -p --cpu-list 3  $output_tid
+    else
+      echo "# ERROR: mpd:output thread id not got!!!"
     fi
 
-    echo "# Change other mpd low-prio thread affinity to spread all cpus ..."
-    ps -eL -o lwp,psr,cls,comm,args|awk '($5~"mpd" && ($4=="mpd" || $4=="player" || $4~"decoder" || $4=="io" || $4=="update")){print $1}'| while read tid;
+    echo "# INFO: change other mpd low-prio thread affinity to spread all cpus ..."
+    ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($5~"mpd" && ($4=="mpd" || $4=="player" || $4~"decoder" || $4=="io" || $4=="update")){print $1}'| while read tid;
     do
      taskset -p --cpu-list 2  $tid
      chrt --rr -p 30 $tid
     done
   ;;
   squeezelite)
-    # ps -eL -o lwp,psr,comm,args | grep -Pi -- "${player}" | grep -Pv 'grep|systemctl|sudo|/bin/bash' | awk '{print $1}' | while read tid;
-    # do
-    #   taskset -p --cpu-list 2-3  $tid
-    # done
-
     # get tid list, FF first 
     sqlplist=( $(ps -q $(pgrep -d, ${player}) -eL -o lwp,cls,psr,comm,args | awk -v player=${player} '($4 ~ player){ if($2 == "FF"){ ffp=$1 }else{ tsp= tsp" "$1} }END{print ffp,tsp}' ) )
     
@@ -72,5 +75,5 @@ case "${player}" in
 esac
 
 echo "#  Final CPU Affinity status for dwc_otg/${player}:"
-ps -q $(pgrep -d, 'dwc_otg|mpd|squeezelite') -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
+ps -q $(pgrep -d, 'mpd|squeezelite') -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
 
