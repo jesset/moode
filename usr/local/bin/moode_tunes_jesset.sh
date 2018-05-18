@@ -212,6 +212,45 @@ done
 test -e $usb_mount && mpc update USB && rm -f $usb_mount 
 
 
+# Automatic mount SDcard partitions
+export sdcard_mount=/tmp/sdcard_mount.lock
+export sdcard_mountopts="noexec,nodev,noatime,nodiratime"
+
+lsblk --pairs --noheadings --paths --bytes \
+      --include 179 \
+      --output name,size,type,rm,uuid,label,fstype,mountpoint | \
+while read line ;do
+ eval "$line"
+ # only mount removable media and 
+ if [[ $TYPE == "part" ]] && \
+	 [[ "$LABEL" != "BOOT" ]] && \
+	 [[ "$LABEL" != "ROOTFS" ]] && \
+	 [[ -z "$MOUNTPOINT" ]] ;then
+   echo "INFO: SDcard partition to mount: type=$TYPE name=$NAME uuid=$UUID label='$LABEL'"
+   if findmnt -nl --source $NAME ;then
+     echo "INFO: $NAME already mounted, skip."
+   else
+     [[ x$LABEL != x ]] && target=/mnt/SDCARD/"$LABEL" || target=/mnt/SDCARD/"$UUID"
+     test -d "$target" || mkdir -v "$target"
+     case "$FSTYPE" in
+       vfat)
+         sdcard_mountopts+=",dmask=0000,fmask=0000,umask=0000"
+       ;;
+       ntfs)
+         sdcard_mountopts+=",dmask=0022,fmask=0022"
+       ;;
+     esac
+     mount -o $sdcard_mountopts $NAME "$target" && \
+       touch $sdcard_mount && \
+       echo "INFO: mounted $NAME to '$target'"
+   fi
+ fi
+ unset RM TYPE LABEL UUID
+done
+
+test -e $sdcard_mount && mpc update SDCARD && rm -f $sdcard_mount 
+
+
 
 echo "Finished."
 
