@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -li
 # Disable LED if intended to (touch /boot/NOLED)
 # Diable ALL USB(Devices) if intended to (touch /boot/NOUSB),also unload *usb* modules
 # Diable ALL USB(Devices) if eth0 AND usb-dac not set
@@ -171,7 +171,7 @@ if ip link show wlan0 >/dev/null 2>&1 ;then
 fi
 
 
-export mounted_srcs=''
+export mounted_srcs=/dev/shm/mount.src.list
 # Automatic mount USB Storage
 
 lsblk --pairs --noheadings --paths --bytes \
@@ -199,7 +199,7 @@ while read line ;do
      mount -o $mount_opts $NAME "$target" && \
        touch $usb_mount && \
        echo "INFO: mounted $NAME to '$target'"
-     mounted_srcs+=" $NAME"
+     echo $NAME >> $mounted_srcs
    fi
  fi
  unset RM TYPE LABEL UUID
@@ -238,7 +238,7 @@ while read line ;do
      mount -o $sdcard_mountopts $NAME "$target" && \
        touch $sdcard_mount && \
        echo "INFO: mounted $NAME to '$target'"
-     mounted_srcs+=" $NAME"
+     echo $NAME >> $mounted_srcs
    fi
  fi
  unset RM TYPE LABEL UUID
@@ -246,15 +246,17 @@ done
 
 test -e $sdcard_mount && mpc update SDCARD
 
-echo "INFO: re-check usb/sdcard mounts"
-for c in {1..180};do
-  for src in $mounted_srcs ;do
+
+# Double check mounts
+for c in {20..1};do
+  echo "INFO: recheck usb/sdcard mount $c ..."
+  while read src;do
      if ! findmnt -nl --source $src ;then
        echo "WARN: $src mounted failed, remount..."
        source /dev/shm/mount.sh
      fi
-  done
-  sleep 1
+  done < $mounted_srcs 
+  sleep 5
 done
 
 
