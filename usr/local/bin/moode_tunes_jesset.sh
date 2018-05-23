@@ -201,7 +201,7 @@ while read line ;do
  unset RM TYPE LABEL UUID
 done
 
-test -e $usb_mounted && mpc update USB
+test -e $usb_mounted && touch /media/empty && mpc update USB/empty
 
 
 # Automatic mount SDcard partitions
@@ -240,8 +240,6 @@ while read line ;do
  unset RM TYPE LABEL UUID
 done
 
-test -e $sdcard_mounted && mpc update SDCARD
-
 
 # Double check mounts
 for c in {10..1};do
@@ -251,7 +249,7 @@ for c in {10..1};do
        echo "WARN: $src mounted failed, remount..."
        source /dev/shm/mount.sh
      fi
-  done < $mounted_srcs 
+  done < $mounted_srcs
   sleep 5
 done
 
