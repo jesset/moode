@@ -1,8 +1,4 @@
-#!/bin/bash -li
-# Disable LED if intended to (touch /boot/NOLED)
-# Diable ALL USB(Devices) if intended to (touch /boot/NOUSB),also unload *usb* modules
-# Diable ALL USB(Devices) if eth0 AND usb-dac not set
-# unbind Ethernet(eth0) if not in use (determined by Up/Down status, and addr)
+#!/bin/bash
 
 # set -x
 
@@ -10,10 +6,10 @@ export SQLDB=/var/local/www/db/moode-sqlite3.db
 export nousb_flag=/boot/NOUSB
 export noled_flag=/boot/NOLED
 
-export usb_mount=/tmp/usb_mount.lock
+export usb_mounted=/tmp/usb_mounted.lock
 export mount_opts="ro,noexec,nodev,noatime,nodiratime"
 
-export sdcard_mount=/tmp/sdcard_mount.lock
+export sdcard_mounted=/tmp/sdcard_mounted.lock
 export sdcard_mountopts="noexec,nodev,noatime,nodiratime"
 
 
@@ -197,15 +193,15 @@ while read line ;do
      esac
      echo "mount -o $mount_opts $NAME \"$target\"" > /dev/shm/mount.sh
      mount -o $mount_opts $NAME "$target" && \
-       touch $usb_mount && \
-       echo "INFO: mounted $NAME to '$target'"
+     touch $usb_mounted && \
+     echo "INFO: mounted $NAME to '$target'"
      echo $NAME >> $mounted_srcs
    fi
  fi
  unset RM TYPE LABEL UUID
 done
 
-test -e $usb_mount && mpc update USB
+test -e $usb_mounted && mpc update USB
 
 
 # Automatic mount SDcard partitions
@@ -236,7 +232,7 @@ while read line ;do
      esac
      echo "mount -o $sdcard_mountopts $NAME \"$target\"" >> /dev/shm/mount.sh
      mount -o $sdcard_mountopts $NAME "$target" && \
-       touch $sdcard_mount && \
+       touch $sdcard_mounted && \
        echo "INFO: mounted $NAME to '$target'"
      echo $NAME >> $mounted_srcs
    fi
@@ -244,14 +240,14 @@ while read line ;do
  unset RM TYPE LABEL UUID
 done
 
-test -e $sdcard_mount && mpc update SDCARD
+test -e $sdcard_mounted && mpc update SDCARD
 
 
 # Double check mounts
-for c in {20..1};do
+for c in {10..1};do
   echo "INFO: recheck usb/sdcard mount $c ..."
   while read src;do
-     if ! findmnt -nl --source $src ;then
+     if ! findmnt -nl --source $src >/dev/null;then
        echo "WARN: $src mounted failed, remount..."
        source /dev/shm/mount.sh
      fi
