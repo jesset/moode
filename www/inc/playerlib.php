@@ -1890,14 +1890,14 @@ function getHdwrRev() {
 		'0093' => 'Pi-Zero 512MB v1.3'
 	); 
 
-	$revnum = sysCmd('awk ' . "'" . '{if ($1=="Revision") print substr($3,length($3)-3)}' . "'" . ' /proc/cpuinfo');
-	$arch = sysCmd('uname -m');
-	if($arch[0] === 'aarch64'){
-	  return 'Pi-3B 1GB v1.2/Pi-3B+ 1GB v1.3';
+    $uname=posix_uname();
+	if($uname['machine'] === 'aarch64'){
+	  $revnum = sysCmd('vcgencmd otp_dump | awk -F: ' . "'" .'/^30:/{print substr($2,5)}' . "'");
 	}
 	else{
-	  return array_key_exists($revnum[0], $revname) ? $revname[$revnum[0]] : 'Unknown Pi-model';
+	  $revnum = sysCmd('awk ' . "'" . '{if ($1=="Revision") print substr($3,length($3)-3)}' . "'" . ' /proc/cpuinfo');
 	}
+	return array_key_exists($revnum[0], $revname) ? $revname[$revnum[0]] : 'Unknown Pi-model';
 }
 
 /*
