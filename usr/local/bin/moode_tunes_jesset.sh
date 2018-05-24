@@ -25,6 +25,7 @@ unload_eth0(){
     eth0_usbid_plus=$(cd /sys/bus/usb/drivers/lan78xx/ && ls -d 1-* )
     [[ -n $eth0_usbid_plus ]] && echo "$eth0_usbid_plus" > /sys/bus/usb/drivers/lan78xx/unbind \
       && echo "# eth0 unbinded."
+    modprobe -r microchip lan78xx libphy
   fi
 }
 
