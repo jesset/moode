@@ -1,8 +1,7 @@
 [Unit]
-Description=MoOde Player Tunes by jesset
-After=network-online.target
-Before=rc-local.service mpd.service
-Wants=network-online.target
+Description=moOde Player tuning by jesset
+After=rc-local.service
+Requires=rc-local.service
 
 [Service]
 Type=oneshot
