@@ -242,6 +242,7 @@ done
 
 
 # Double check mounts
+if test -e $mounted_srcs ;then
 for c in {10..1};do
   echo "INFO: recheck usb/sdcard mount $c ..."
   while read src;do
@@ -252,6 +253,7 @@ for c in {10..1};do
   done < $mounted_srcs
   sleep 5
 done
+fi
 
 
 echo "Finished."
