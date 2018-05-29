@@ -5,6 +5,7 @@
 export SQLDB=/var/local/www/db/moode-sqlite3.db
 export nousb_flag=/boot/NOUSB
 export noled_flag=/boot/NOLED
+export nosmb_flag=/boot/NOSMB
 
 export usb_mounted=/tmp/usb_mounted.lock
 export mount_opts="ro,noexec,nodev,noatime,nodiratime"
@@ -255,6 +256,17 @@ for c in {10..1};do
   sleep 5
 done
 fi
+
+
+# disable samba sharing
+if test -e $nosmb_flag ;then
+  systemctl is-enabled smbd && systemctl disable smbd
+  systemctl is-enabled nmbd && systemctl disable nmbd
+
+  systemctl is-active smbd && systemctl stop smbd
+  systemctl is-active nmbd && systemctl stop nmbd
+fi
+
 
 
 echo "Finished."
