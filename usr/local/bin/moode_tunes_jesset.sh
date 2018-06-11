@@ -18,13 +18,13 @@ unload_eth0(){
   # Pi 3B
   if test -d /sys/bus/usb/drivers/smsc95xx/;then
     eth0_usbid=$(cd /sys/bus/usb/drivers/smsc95xx/ && ls -d 1-* )
-    [[ -n $eth0_usbid ]] && echo "$eth0_usbid" > /sys/bus/usb/drivers/smsc95xx/unbind \
+    [[ -n $eth0_usbid ]] && echo "$eth0_usbid" |tee /sys/bus/usb/drivers/smsc95xx/unbind \
       && echo "# eth0 unbinded."
   fi
   # Pi 3B Plus
   if test -d /sys/bus/usb/drivers/lan78xx/;then
     eth0_usbid_plus=$(cd /sys/bus/usb/drivers/lan78xx/ && ls -d 1-* )
-    [[ -n $eth0_usbid_plus ]] && echo "$eth0_usbid_plus" > /sys/bus/usb/drivers/lan78xx/unbind \
+    [[ -n $eth0_usbid_plus ]] && echo "$eth0_usbid_plus" |tee /sys/bus/usb/drivers/lan78xx/unbind \
       && echo "# eth0 unbinded."
     modprobe -r microchip lan78xx libphy
   fi
@@ -45,13 +45,13 @@ unload_all_usbdev(){
   if [[ x$$usbdev_unbind != "x" ]];then
     usbdev_unbind_r=$(echo $usbdev_unbind | tr ' ' '\n' | tac | tr '\n' ' ')
     for usbid in $usbdev_unbind_r ;do
-      echo  $usbid > /sys/bus/usb/drivers/usb/unbind
+      echo  $usbid |tee /sys/bus/usb/drivers/usb/unbind
     done
   fi
   echo "# unbind USB hub..."
   ( cd /sys/bus/usb/drivers/hub/; ls -1 )| grep -Po '\d+-[\d\.:]+' | \
   while read usbhubid;do
-    [[ -n "$usbhubid" ]] && echo "$usbhubid" > /sys/bus/usb/drivers/hub/unbind || true
+    [[ -n "$usbhubid" ]] && echo "$usbhubid" |tee /sys/bus/usb/drivers/hub/unbind || true
   done
 
   echo "# unload usb relative modules"
