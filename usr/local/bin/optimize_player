@@ -47,7 +47,9 @@ case "${player}" in
     fi
     if [[ -n $output_tid ]];then
       echo "# INFO: change mpd:output thread affinity..."
-      taskset -p --cpu-list 3  $output_tid
+      for otid in $output_tid ;do
+        taskset -p --cpu-list 3  $otid
+      done
     else
       echo "# ERROR: mpd:output thread id not got!!!"
     fi
