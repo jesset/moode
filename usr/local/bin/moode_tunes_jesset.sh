@@ -78,6 +78,16 @@ if test -e $noled_flag; then
   echo none | tee /sys/class/leds/*/trigger
 fi
 
+
+# Double check config.txt (power failure data loss)
+if [[ $(cat /boot/config.txt | sort -u | wc -l) -lt 20 ]];then
+  echo "# Fatal: /boot/config.txt corrupted!!! Try to recover...."
+  cp -av /boot/config.txt.bak /boot/config.txt && sync && systemctl reboot
+else
+  echo "# Info: /boot/config.txt seems OK."
+fi
+
+
 # Reduce OS jitter
 echo "# adjusting rcu_sched/rcu_preempt ..."
 for i in `pgrep rcu[^c]` ; do taskset -pc 0,1 $i ; done
@@ -96,11 +106,8 @@ sysctl -w kernel.softlockup_all_cpu_backtrace=1
 
 
 
-
-
 eth0chk=$(sqlite3 $SQLDB "PRAGMA query_only=1; PRAGMA busy_timeout=5000; select value from cfg_system where param='eth0chk'" | tail -1)
  i2sdev=$(sqlite3 $SQLDB "PRAGMA query_only=1; PRAGMA busy_timeout=5000; select value from cfg_system where param='i2sdevice'" | tail -1)
-
 
 echo '# unbind Ethernet(eth0) if it is not ACTULLY in use (determined by Up/Down status, and addr)'
 for c in {60..1};do
@@ -167,6 +174,17 @@ if ip link show wlan0 >/dev/null 2>&1 ;then
   iwconfig wlan0 rts 250
   iwconfig wlan0 retry short 6
 fi
+
+
+# disable samba sharing
+if test -e $nosmb_flag ;then
+  systemctl is-enabled smbd && systemctl disable smbd
+  systemctl is-enabled nmbd && systemctl disable nmbd
+
+  systemctl is-active smbd && systemctl stop smbd
+  systemctl is-active nmbd && systemctl stop nmbd
+fi
+
 
 
 export mounted_srcs=/dev/shm/mount.src.list
@@ -256,17 +274,6 @@ for c in {10..1};do
   sleep 5
 done
 fi
-
-
-# disable samba sharing
-if test -e $nosmb_flag ;then
-  systemctl is-enabled smbd && systemctl disable smbd
-  systemctl is-enabled nmbd && systemctl disable nmbd
-
-  systemctl is-active smbd && systemctl stop smbd
-  systemctl is-active nmbd && systemctl stop nmbd
-fi
-
 
 
 echo "Finished."
