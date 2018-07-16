@@ -1,0 +1,12 @@
+[Unit]
+Description=moOde Player tuning by jesset
+After=rc-local.service
+Requires=rc-local.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/moode_tunes_jesset.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

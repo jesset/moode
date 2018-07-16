@@ -4,4 +4,26 @@ dtparam=i2c_arm=on
 dtparam=i2s=on
 dtparam=audio=on
 #dtoverlay=pi3-disable-wifi
-#dtoverlay=pi3-disable-bt
+dtoverlay=pi3-disable-bt
+
+
+gpu_mem=16
+force_turbo=1
+
+# under clocking ...
+h264_freq=150
+isp_freq=150
+v3d_freq=150
+h264_freq_min=100
+isp_freq_min=100
+v3d_freq_min=100
+
+initial_turbo=10
+disable_pvt=1
+start_x=0
+dtparam=i2c_vc=off
+dtparam=spi=off
+enable_uart=0
+dtparam=uart0=off
+dtparam=uart1=off
+
