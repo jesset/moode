@@ -33,6 +33,8 @@ do
 done
 
 test -e /usr/sbin/ntpdate-debian || apt install ntpdate
+which socat || apt-get install -y socat
+
 test -e /etc/default/ntpdate && sed -i '/^NTPSERVERS/s,=.*,="1.cn.pool.ntp.org 2.cn.pool.ntp.org 3.cn.pool.ntp.org",g'  /etc/default/ntpdate
 
 
