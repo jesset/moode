@@ -1,5 +1,7 @@
 #!/bin/bash
 
+systemctl enable  moode_tunes_jesset
+
 # systemctl list-unit-files | grep enabled
 systemctl disable nmbd.service
 systemctl disable smbd.service
@@ -31,5 +33,11 @@ do
 done
 
 test -e /usr/sbin/ntpdate-debian || apt install ntpdate
+test -e /etc/default/ntpdate && sed -i '/^NTPSERVERS/s,=.*,="1.cn.pool.ntp.org 2.cn.pool.ntp.org 3.cn.pool.ntp.org",g'  /etc/default/ntpdate
 
+
+find /etc/cron.* -type f |grep -v .placeholder | xargs sudo rm -fv
+
+# php-fpm 的 log 路径 
+sed -i '/^error_log/s,=.*,= /run/log/php7.0-fpm.log,g' /etc/php/7.0/fpm/php-fpm.conf
 
