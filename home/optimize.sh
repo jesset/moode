@@ -9,3 +9,6 @@ do
   test -e /etc/php/7.0/fpm/conf.d/$i && rm -fv  /etc/php/7.0/fpm/conf.d/$i
 done
 
+test -e /usr/sbin/ntpdate-debian || apt install ntpdate
+
+
