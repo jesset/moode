@@ -139,18 +139,18 @@ if (substr($_SESSION['hdwrrev'], 0, 6) == 'Pi-CM3') {
 }
 
 // exit if running an unsupported kernel config
-// if (($_SESSION['feat_bitmask'] & FEAT_ADVKERNELS) ||
-// 	($_SESSION['procarch'] == 'armv6l' && false !== strpos($_SESSION['kernelver'], '-')) ||
-// 	($_SESSION['procarch'] == 'armv7l' && false === strpos($_SESSION['kernelver'], '-v7+') && false === strpos($_SESSION['kernelver'], '-sunxi'))) { // r42z sunxi
-// 	if ($_SESSION['feat_bitmask'] & FEAT_ADVKERNELS) {
-// 		workerLog('worker: Unsupported configuration (' . $_SESSION['feat_bitmask'] . ')');
-// 	}
-// 	else {
-// 		workerLog('worker: Unsupported Linux kernel (' . $_SESSION['kernelver'] . ')');
-// 	}	
-// 	workerLog('worker: Exited');
-// 	exit;
-// }
+if (($_SESSION['feat_bitmask'] & FEAT_ADVKERNELS) ||
+	($_SESSION['procarch'] == 'armv6l' && false !== strpos($_SESSION['kernelver'], '-')) ||
+	($_SESSION['procarch'] == 'armv7l' && false === strpos($_SESSION['kernelver'], '-v7+') && false === strpos($_SESSION['kernelver'], '-sunxi'))) { // r42z sunxi
+	if ($_SESSION['feat_bitmask'] & FEAT_ADVKERNELS) {
+		workerLog('worker: Unsupported configuration (' . $_SESSION['feat_bitmask'] . ')');
+	}
+	else {
+		workerLog('worker: Unsupported Linux kernel (' . $_SESSION['kernelver'] . ')');
+	}	
+	workerLog('worker: Exited');
+	exit;
+}
 
 // log platform data 
 workerLog('worker: Host (' . $_SESSION['hostname'] . ')');
