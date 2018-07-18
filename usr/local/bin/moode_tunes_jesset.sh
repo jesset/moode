@@ -8,46 +8,34 @@ export noled_flag=/boot/NOLED
 export nosmb_flag=/boot/NOSMB
 
 export usb_mounted=/tmp/usb_mounted.lock
-export mount_opts="ro,noexec,nodev,noatime,nodiratime"
-
 export sdcard_mounted=/tmp/sdcard_mounted.lock
-export sdcard_mountopts="noexec,nodev,noatime,nodiratime"
+export mount_opts="ro,noexec,nodev,noatime,nodiratime"
 
 
 unload_eth0(){
   # Pi 3B
   if test -d /sys/bus/usb/drivers/smsc95xx/;then
     eth0_usbid=$(cd /sys/bus/usb/drivers/smsc95xx/ && ls -d 1-* )
-    [[ -n $eth0_usbid ]] && echo "$eth0_usbid" |tee /sys/bus/usb/drivers/smsc95xx/unbind \
-      && echo "# eth0 unbinded."
+    if [[ -n $eth0_usbid ]] ;then
+      /usr/local/bin/uhubctl  -p 1 -a off
+      echo "$eth0_usbid" |tee /sys/bus/usb/drivers/smsc95xx/unbind && echo "# eth0 unbinded."
+    fi
   fi
   # Pi 3B Plus
   if test -d /sys/bus/usb/drivers/lan78xx/;then
     eth0_usbid_plus=$(cd /sys/bus/usb/drivers/lan78xx/ && ls -d 1-* )
-    [[ -n $eth0_usbid_plus ]] && echo "$eth0_usbid_plus" |tee /sys/bus/usb/drivers/lan78xx/unbind \
-      && echo "# eth0 unbinded."
+    if [[ -n $eth0_usbid_plus ]] ;then
+      /usr/local/bin/uhubctl  -p 1 -a off
+      echo "$eth0_usbid_plus" |tee /sys/bus/usb/drivers/lan78xx/unbind && echo "# eth0 unbinded."
+    fi
     modprobe -r microchip lan78xx libphy
   fi
 }
 
 unload_all_usbdev(){
-  usbdev_unbind=''
-  # Find all usb dev ids ...
-  for usbdev in  /sys/bus/usb/drivers/usb/* ;do
-    usbid=$(basename $usbdev)
-    if echo $usbid | grep -Piq '\d+-[\d\.:]+' ;then
-      echo "# USB device to unbind: $usbid"
-      usbdev_unbind="${usbdev_unbind} $usbid"
-    fi
-  done
+  echo "# Power off USB hub..."
+  /usr/local/bin/uhubctl -a off
 
-  echo "# unbind USB devices ..."
-  if [[ x$$usbdev_unbind != "x" ]];then
-    usbdev_unbind_r=$(echo $usbdev_unbind | tr ' ' '\n' | tac | tr '\n' ' ')
-    for usbid in $usbdev_unbind_r ;do
-      echo  $usbid |tee /sys/bus/usb/drivers/usb/unbind
-    done
-  fi
   echo "# unbind USB hub..."
   ( cd /sys/bus/usb/drivers/hub/; ls -1 )| grep -Po '\d+-[\d\.:]+' | \
   while read usbhubid;do
@@ -133,20 +121,15 @@ done
 
 echo "# USB tunning..."
 for (( i = 0; i < 1; i++ )); do
-  # Condition : Disable All USB Port, if any:
-  # 1. using i2c dac && eth0 not enabled
-  # 2. /boot/NOUSB touched
+  # Condition : Disable All USB Port, if any met:
+  # A. using i2c dac && eth0 not enabled && no usb-storage plugged
+  # B. /boot/NOUSB flag touched
   if ( [[ ${eth0chk} -eq 0  ]] && [[ "${i2sdev}" != none  ]] ) || test -e $nousb_flag ; then
-    if ! grep -q usb_storage /proc/modules; then
+    if ! lsusb -t | grep -q 'Driver=usb-storage'; then
       echo "# unload all usb port, eth0chk=${eth0chk}, i2sdev=${i2sdev}"
       unload_all_usbdev
       break
     fi
-  fi
-
-  if [[ ${eth0chk} -eq 0  ]];then
-    echo "# 'wait for eth0' not set in moode webui"
-    unload_eth0
   fi
 
   if [[ "${i2sdev}" == none  ]];then
@@ -158,17 +141,20 @@ for (( i = 0; i < 1; i++ )); do
     done
   else
     echo "# You chosed I2S DAC."
-    if ! grep -q usb_storage /proc/modules; then
+    if ! lsusb -t | grep -q 'Driver=usb-storage'; then
       for port in 2 3 4 5;do
         echo "#   Disable USB Hub port $port ..."
-        /usr/local/bin/hub-ctrl -b 1 -d 2 -P $port -p 0
+        /usr/local/bin/uhubctl -p $port -a off
         sleep 0.3
       done
     fi
   fi
 done
 
+echo "# Power off un-used usb ports ..."
+/usr/local/bin/uhubctl | grep Port | grep -Pv '\w{4}:\w{4}'| awk '{print $2}'| sed 's,:,,' | xargs -n 1 -I PP /usr/local/bin/uhubctl -p PP -a off
 
+echo "# WiFi setting ..."
 if ip link show wlan0 >/dev/null 2>&1 ;then
   iwconfig wlan0 frag 512
   iwconfig wlan0 rts 250
@@ -188,6 +174,7 @@ fi
 
 
 export mounted_srcs=/dev/shm/mount.src.list
+
 # Automatic mount USB Storage
 
 lsblk --pairs --noheadings --paths --bytes \
@@ -205,20 +192,23 @@ while read line ;do
      test -d "$target" || mkdir -v "$target"
      case "$FSTYPE" in
        vfat)
-         mount_opts+=",dmask=0000,fmask=0000,umask=0000"
+         usb_pmntopts="${mount_opts},dmask=0000,fmask=0000,umask=0000"
        ;;
        ntfs)
-         mount_opts+=",dmask=0022,fmask=0022"
+         usb_pmntopts="${mount_opts},dmask=0022,fmask=0022"
+       ;;
+       *)
+         usb_pmntopts="${mount_opts}"
        ;;
      esac
-     echo "mount -o $mount_opts $NAME \"$target\"" > /dev/shm/mount.sh
-     mount -o $mount_opts $NAME "$target" && \
+     echo "mount -o $usb_pmntopts $NAME \"$target\"" > /dev/shm/mount.sh
+     mount -o $usb_pmntopts $NAME "$target" && \
      touch $usb_mounted && \
      echo "INFO: mounted $NAME to '$target'"
      echo $NAME >> $mounted_srcs
    fi
  fi
- unset RM TYPE LABEL UUID
+ unset RM TYPE LABEL UUID usb_pmntopts
 done
 
 test -e $usb_mounted && touch /media/empty && mpc update USB/empty
@@ -244,26 +234,29 @@ while read line ;do
      test -d "$target" || mkdir -v "$target"
      case "$FSTYPE" in
        vfat)
-         sdcard_mountopts+=",dmask=0000,fmask=0000,umask=0000"
+         sd_pmntopts="${mount_opts},dmask=0000,fmask=0000,umask=0000"
        ;;
        ntfs)
-         sdcard_mountopts+=",dmask=0022,fmask=0022"
+         sd_pmntopts="${mount_opts},dmask=0022,fmask=0022"
+       ;;
+       *)
+         sd_pmntopts="${mount_opts}"
        ;;
      esac
-     echo "mount -o $sdcard_mountopts $NAME \"$target\"" >> /dev/shm/mount.sh
-     mount -o $sdcard_mountopts $NAME "$target" && \
+     echo "mount -o $sd_pmntopts $NAME \"$target\"" >> /dev/shm/mount.sh
+     mount -o $sd_pmntopts $NAME "$target" && \
        touch $sdcard_mounted && \
        echo "INFO: mounted $NAME to '$target'"
      echo $NAME >> $mounted_srcs
    fi
  fi
- unset RM TYPE LABEL UUID
+ unset RM TYPE LABEL UUID sd_pmntopts
 done
 
 
 # Double check mounts
 if test -e $mounted_srcs ;then
-for c in {10..1};do
+for c in {3..1};do
   echo "INFO: recheck usb/sdcard mount $c ..."
   while read src;do
      if ! findmnt -nl --source $src >/dev/null;then
@@ -271,7 +264,7 @@ for c in {10..1};do
        source /dev/shm/mount.sh
      fi
   done < $mounted_srcs
-  sleep 5
+  sleep 2
 done
 fi
 
