@@ -27,7 +27,7 @@ unload_eth0(){
   if test -d /sys/bus/usb/drivers/lan78xx/;then
     eth0_usbid_plus=$(cd /sys/bus/usb/drivers/lan78xx/ && ls -d 1-* )
     if [[ -n $eth0_usbid_plus ]] ;then
-      uhubctl  -p 1 -a off
+      uhubctl -l 1-1.1 -p 1 -a off
       echo "$eth0_usbid_plus" |tee /sys/bus/usb/drivers/lan78xx/unbind && echo "# eth0 unbinded."
     fi
     modprobe -r microchip lan78xx libphy
@@ -36,7 +36,8 @@ unload_eth0(){
 
 unload_all_usbdev(){
   echo "# Power off USB hub..."
-  uhubctl -a off
+  uhubctl -l 1-1.1 -a off >/dev/null 2>&1
+  uhubctl -l 1-1 -a off
 
   echo "# unbind USB hub..."
   ( cd /sys/bus/usb/drivers/hub/; ls -1 )| grep -Po '\d+-[\d\.:]+' | \
@@ -158,6 +159,7 @@ do
     else
       port_num=$(echo "${line}" | awk '{print $2}'| sed 's,:,,')
       if [[ -n ${port_num} ]]; then
+        [[ ${hub} == '1-1' && ${port_num} == 2 ]] && continue
         echo "#   Hub ${hub} , USB Port ${port_num} power off ..."
         uhubctl -l ${hub} -p ${port_num} -a off
       fi
@@ -217,7 +219,7 @@ while read line ;do
      mount -o $usb_pmntopts $NAME "$target" && \
      touch $usb_mounted && \
      echo "INFO: mounted $NAME to '$target'"
-     echo $NAME >> $mounted_srcs
+     echo $NAME > $mounted_srcs
    fi
  fi
  unset RM TYPE LABEL UUID usb_pmntopts
