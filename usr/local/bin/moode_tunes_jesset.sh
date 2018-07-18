@@ -152,7 +152,11 @@ for (( i = 0; i < 1; i++ )); do
 done
 
 echo "# Power off un-used usb ports ..."
-/usr/local/bin/uhubctl | grep Port | grep -Pv '\w{4}:\w{4}'| awk '{print $2}'| sed 's,:,,' | xargs -n 1 -I PP /usr/local/bin/uhubctl -p PP -a off
+/usr/local/bin/uhubctl | grep Port | grep -Pv '\w{4}:\w{4}'| awk '{print $2}'| sed 's,:,,' | while read uport;
+do
+  echo "#   USB Port ${uport} off ..."
+  /usr/local/bin/uhubctl -p ${uport} -a off
+done
 
 echo "# WiFi setting ..."
 if ip link show wlan0 >/dev/null 2>&1 ;then
