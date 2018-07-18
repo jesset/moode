@@ -1,6 +1,8 @@
 #!/bin/bash
-
 # set -x
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export LANG=C
+export LC_ALL=C
 
 export SQLDB=/var/local/www/db/moode-sqlite3.db
 export nousb_flag=/boot/NOUSB
@@ -17,7 +19,7 @@ unload_eth0(){
   if test -d /sys/bus/usb/drivers/smsc95xx/;then
     eth0_usbid=$(cd /sys/bus/usb/drivers/smsc95xx/ && ls -d 1-* )
     if [[ -n $eth0_usbid ]] ;then
-      /usr/local/bin/uhubctl  -p 1 -a off
+      uhubctl  -p 1 -a off
       echo "$eth0_usbid" |tee /sys/bus/usb/drivers/smsc95xx/unbind && echo "# eth0 unbinded."
     fi
   fi
@@ -25,7 +27,7 @@ unload_eth0(){
   if test -d /sys/bus/usb/drivers/lan78xx/;then
     eth0_usbid_plus=$(cd /sys/bus/usb/drivers/lan78xx/ && ls -d 1-* )
     if [[ -n $eth0_usbid_plus ]] ;then
-      /usr/local/bin/uhubctl  -p 1 -a off
+      uhubctl  -p 1 -a off
       echo "$eth0_usbid_plus" |tee /sys/bus/usb/drivers/lan78xx/unbind && echo "# eth0 unbinded."
     fi
     modprobe -r microchip lan78xx libphy
@@ -34,7 +36,7 @@ unload_eth0(){
 
 unload_all_usbdev(){
   echo "# Power off USB hub..."
-  /usr/local/bin/uhubctl -a off
+  uhubctl -a off
 
   echo "# unbind USB hub..."
   ( cd /sys/bus/usb/drivers/hub/; ls -1 )| grep -Po '\d+-[\d\.:]+' | \
@@ -139,24 +141,30 @@ for (( i = 0; i < 1; i++ )); do
     do
       taskset -p --cpu-list 0-1 $pid
     done
-  else
-    echo "# You chosed I2S DAC."
-    if ! lsusb -t | grep -q 'Driver=usb-storage'; then
-      for port in 2 3 4 5;do
-        echo "#   Disable USB Hub port $port ..."
-        /usr/local/bin/uhubctl -p $port -a off
-        sleep 0.3
-      done
-    fi
   fi
 done
 
+
 echo "# Power off un-used usb ports ..."
-/usr/local/bin/uhubctl | grep Port | grep -Pv '\w{4}:\w{4}'| awk '{print $2}'| sed 's,:,,' | while read uport;
+# uhub_num=$(uhubctl | grep 'Current status for hub'| wc -l)
+# hub 2, RPi Model 3B Plus
+# hub 1, RPi Model 3B
+for hub in 1-1.1 1-1;
 do
-  echo "#   USB Port ${uport} off ..."
-  /usr/local/bin/uhubctl -p ${uport} -a off
+  uhubctl -l ${hub} | grep -P '^\s+Port' | tac | while read line
+  do
+    if echo "${line}" | grep -q 'enable connect';then
+      break
+    else
+      port_num=$(echo "${line}" | awk '{print $2}'| sed 's,:,,')
+      if [[ -n ${port_num} ]]; then
+        echo "#   Hub ${hub} , USB Port ${port_num} power off ..."
+        uhubctl -l ${hub} -p ${port_num} -a off
+      fi
+    fi
+  done
 done
+
 
 echo "# WiFi setting ..."
 if ip link show wlan0 >/dev/null 2>&1 ;then
