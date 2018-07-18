@@ -8,10 +8,8 @@ export noled_flag=/boot/NOLED
 export nosmb_flag=/boot/NOSMB
 
 export usb_mounted=/tmp/usb_mounted.lock
-export mount_opts="ro,noexec,nodev,noatime,nodiratime"
-
 export sdcard_mounted=/tmp/sdcard_mounted.lock
-export sdcard_mountopts="noexec,nodev,noatime,nodiratime"
+export mount_opts="ro,noexec,nodev,noatime,nodiratime"
 
 
 unload_eth0(){
@@ -194,20 +192,23 @@ while read line ;do
      test -d "$target" || mkdir -v "$target"
      case "$FSTYPE" in
        vfat)
-         mount_opts+=",dmask=0000,fmask=0000,umask=0000"
+         usb_pmntopts="${mount_opts},dmask=0000,fmask=0000,umask=0000"
        ;;
        ntfs)
-         mount_opts+=",dmask=0022,fmask=0022"
+         usb_pmntopts="${mount_opts},dmask=0022,fmask=0022"
+       ;;
+       *)
+         usb_pmntopts="${mount_opts}"
        ;;
      esac
-     echo "mount -o $mount_opts $NAME \"$target\"" > /dev/shm/mount.sh
-     mount -o $mount_opts $NAME "$target" && \
+     echo "mount -o $usb_pmntopts $NAME \"$target\"" > /dev/shm/mount.sh
+     mount -o $usb_pmntopts $NAME "$target" && \
      touch $usb_mounted && \
      echo "INFO: mounted $NAME to '$target'"
      echo $NAME >> $mounted_srcs
    fi
  fi
- unset RM TYPE LABEL UUID
+ unset RM TYPE LABEL UUID usb_pmntopts
 done
 
 test -e $usb_mounted && touch /media/empty && mpc update USB/empty
@@ -233,20 +234,23 @@ while read line ;do
      test -d "$target" || mkdir -v "$target"
      case "$FSTYPE" in
        vfat)
-         sdcard_mountopts+=",dmask=0000,fmask=0000,umask=0000"
+         sd_pmntopts="${mount_opts},dmask=0000,fmask=0000,umask=0000"
        ;;
        ntfs)
-         sdcard_mountopts+=",dmask=0022,fmask=0022"
+         sd_pmntopts="${mount_opts},dmask=0022,fmask=0022"
+       ;;
+       *)
+         sd_pmntopts="${mount_opts}"
        ;;
      esac
-     echo "mount -o $sdcard_mountopts $NAME \"$target\"" >> /dev/shm/mount.sh
-     mount -o $sdcard_mountopts $NAME "$target" && \
+     echo "mount -o $sd_pmntopts $NAME \"$target\"" >> /dev/shm/mount.sh
+     mount -o $sd_pmntopts $NAME "$target" && \
        touch $sdcard_mounted && \
        echo "INFO: mounted $NAME to '$target'"
      echo $NAME >> $mounted_srcs
    fi
  fi
- unset RM TYPE LABEL UUID
+ unset RM TYPE LABEL UUID sd_pmntopts
 done
 
 
