@@ -1,0 +1,26 @@
+#!/bin/bash
+
+case $1 in
+	rt)
+		pattern="^(TS|IDL)"
+		;;
+	ts)
+		pattern="^(FF|RR)"
+		;;
+	*)
+		pattern=""
+		;;
+esac
+
+if [[ -n "$pattern" ]];then
+  ps -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,pcpu,comm,args | awk '{ if(NR==1){header=$0}else{lines[$4]=lines[$4] $0 "\n"}}END{for(c in lines){print header;print lines[c]} }' | sed -E "/${pattern}/d"
+else
+  ps -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,pcpu,comm,args | awk '{ if(NR==1){header=$0}else{lines[$4]=lines[$4] $0 "\n"}}END{for(c in lines){print header;print lines[c]} }'
+fi
+
+
+
+
+
+
+
