@@ -37,8 +37,18 @@ case "${player}" in
       echo "# ERROR: MPD master process pid not got!!!"
     fi
 
-    rtio_tid=$(ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($4~"rtio"){print $1}')
-    output_tid=$(ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($4~"output"){print $1}')
+    export rtio_tid=''
+    export output_tid=''
+    for c in 1 2 3 4 5;do
+      [[ -z ${rtio_tid} ]]   && rtio_tid=$(ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($4~"rtio"){print $1}')
+      [[ -z ${output_tid} ]] && output_tid=$(ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($4~"output"){print $1}')
+      if [[ -n ${rtio_tid} && -n ${output_tid} ]]; then
+        break
+      else
+        sleep 0.5
+      fi
+    done
+
     if [[ -n $rtio_tid ]];then
       echo "# INFO: change mpd:rtio thread affinity..."
       taskset -p --cpu-list 2  $rtio_tid
@@ -62,9 +72,9 @@ case "${player}" in
     done
   ;;
   squeezelite)
-    # get tid list, FF first 
+    # get tid list, FF first
     sqlplist=( $(ps -q $(pgrep -d, ${player}) -eL -o lwp,cls,psr,comm,args | awk -v player=${player} '($4 ~ player){ if($2 == "FF"){ ffp=$1 }else{ tsp= tsp" "$1} }END{print ffp,tsp}' ) )
-    
+
     # FF tid
     taskset -p --cpu-list 3  ${sqlplist[0]}
     # TS tid
