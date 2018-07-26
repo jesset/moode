@@ -359,8 +359,11 @@ function genLibrary($flat) {
 			
 		array_push($lib[$genre][$artist][$album], $songData);
 	}
-	
-	if (file_put_contents('/var/local/www/libcache.json', json_encode($lib)) === false) {
+    $lib_json = json_encode($lib);
+    if ($lib_json === false) {
+		debugLog('genLibrary: json_encode failed, error no:'.json_last_error());
+    }
+	if (file_put_contents('/var/local/www/libcache.json', $lib_json) === false) {
 		debugLog('genLibrary: create libcache.json failed');		
 	}
 	
