@@ -211,7 +211,11 @@ FEAT_UPMPDCLI=2#00100000
 HOSTNAME=`uname -n`
 RASPBIANVER=`cat /etc/debian_version`
 KERNEL=`uname -r`
-CPU=`cat /proc/cpuinfo | grep "Hardware" | cut -f 2 -d ":" | tr -d " "`
+if [[ $(uname -m) == "aarch64" ]];then
+  CPU=`cat /proc/device-tree/compatible | tr '\0' ' ' | awk -F, '{print $NF}'`
+else
+  CPU=`cat /proc/cpuinfo | grep "Hardware" | cut -f 2 -d ":" | tr -d " "`
+fi
 CORES=`grep -c ^processor /proc/cpuinfo`
 ARCH=`uname -m`
 MEMUSED=`free -m | grep "Mem" | awk {'print $3'}`
