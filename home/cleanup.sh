@@ -26,8 +26,9 @@ sudo find -L /var/log/ \
 	     /var/run/log \
 	     /var/cache/upmpdcli -type f -print0 | xargs -0 -r --verbose -n 1  sudo truncate -s 0
 
-sudo rm -fv /var/lib/dhcpcd5/* /etc/dhcpcd.duid /etc/dhcpcd.secret /var/lib/dhcp/* /var/run/wpa_supplicant/wlan0
+sudo rm -fv /var/lib/dhcpcd5/* /etc/dhcpcd.duid /etc/dhcpcd.secret /var/lib/dhcp/* /var/run/wpa_supplicant/wlan0 /var/lib/misc/dnsmasq.leases
 sudo rm -fv /etc/network/interfaces.d/*
+sudo rm -fv /var/lib/samba/private/msg.sock/*
 
 sudo cp -v /home/pi/rel-stretch/network/wpa_supplicant.conf.default /etc/wpa_supplicant/wpa_supplicant.conf
 sudo cp -v /home/pi/rel-stretch/network/dhcpcd.conf.default /etc/dhcpcd.conf
