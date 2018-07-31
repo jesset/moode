@@ -11,7 +11,7 @@ export nosmb_flag=/boot/NOSMB
 
 export usb_mounted=/tmp/usb_mounted.lock
 export sdcard_mounted=/tmp/sdcard_mounted.lock
-export mount_opts="ro,noexec,nodev,noatime,nodiratime"
+export mount_opts="noexec,nodev,noatime,nodiratime"
 
 
 unload_eth0(){
@@ -252,6 +252,9 @@ while read line ;do
        ;;
        ntfs)
          sd_pmntopts="${mount_opts},dmask=0022,fmask=0022"
+       ;;
+       ext4|xfs)
+         sd_pmntopts="discard,${mount_opts}"
        ;;
        *)
          sd_pmntopts="${mount_opts}"
