@@ -28,7 +28,7 @@ sudo find -L /var/log/ \
 
 sudo rm -fv /var/lib/dhcpcd5/* /etc/dhcpcd.duid /etc/dhcpcd.secret /var/lib/dhcp/* /var/run/wpa_supplicant/wlan0 /var/lib/misc/dnsmasq.leases
 sudo rm -fv /etc/network/interfaces.d/*
-sudo rm -fv /var/lib/samba/private/msg.sock/*
+sudo find /var/lib/samba/private/msg.sock/ -type s | xargs sudo rm -fv
 
 sudo cp -v /home/pi/rel-stretch/network/wpa_supplicant.conf.default /etc/wpa_supplicant/wpa_supplicant.conf
 sudo cp -v /home/pi/rel-stretch/network/dhcpcd.conf.default /etc/dhcpcd.conf
