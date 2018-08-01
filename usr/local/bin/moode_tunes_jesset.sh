@@ -8,6 +8,7 @@ export SQLDB=/var/local/www/db/moode-sqlite3.db
 export nousb_flag=/boot/NOUSB
 export noled_flag=/boot/NOLED
 export nosmb_flag=/boot/NOSMB
+export sdpart_flag=/boot/SDAUTOPART
 
 export usb_mounted=/tmp/usb_mounted.lock
 export sdcard_mounted=/tmp/sdcard_mounted.lock
@@ -178,13 +179,36 @@ fi
 
 # disable samba sharing
 if test -e $nosmb_flag ;then
-  systemctl is-enabled smbd && systemctl disable smbd
-  systemctl is-enabled nmbd && systemctl disable nmbd
+  systemctl is-enabled smbd >/dev/null && systemctl disable smbd
+  systemctl is-enabled nmbd >/dev/null && systemctl disable nmbd
 
-  systemctl is-active smbd && systemctl stop smbd
-  systemctl is-active nmbd && systemctl stop nmbd
+  systemctl is-active smbd >/dev/null && systemctl stop smbd
+  systemctl is-active nmbd >/dev/null && systemctl stop nmbd
 fi
 
+
+# Auto create/recover SDcard third partition (music sotrage)
+if test -e $sdpart_flag ;then
+    # create(restore) new partition(3rd partition)
+    boot_disk=$(findmnt / -o SOURCE --noheadings)
+    boot_disk=${boot_disk%p*}
+    extrapart_geometry=$(parted -s ${boot_disk} unit s print free | grep -i 'Free Space' | awk '{print $1,$2,$3}')
+    if [[ -n "${extrapart_geometry}" ]];then
+      extrapart_geometry_a=($extrapart_geometry)
+      # only apply to Free Space larger than 1GB (512*2097152)
+      if [[ ${extrapart_geometry_a[2]%s} -gt 2097152 ]];then
+        parted -s ${boot_disk} mkpart primary ${extrapart_geometry_a[0]} ${extrapart_geometry_a[1]} 
+        lastpart_num=$(partprobe -s ${boot_disk} | awk '{print $NF}') 
+        lastpart_name=${boot_disk}p${lastpart_num} 
+        eval "$(lsblk --pairs --noheadings --paths --bytes --output name,size,type,rm,uuid,label,fstype ${lastpart_name})"
+        if [[ -z "${LABEL}" && -z ${FSTYPE} ]];then
+          mkfs.vfat -n SDCARDEXT ${lastpart_name}
+        fi
+        unset RM TYPE LABEL UUID usb_pmntopts
+      fi
+    fi
+    rm -f $sdpart_flag
+fi
 
 
 export mounted_srcs=/dev/shm/mount.src.list
@@ -235,7 +259,6 @@ lsblk --pairs --noheadings --paths --bytes \
       --output name,size,type,rm,uuid,label,fstype,mountpoint | \
 while read line ;do
  eval "$line"
- # only mount removable media and
  if [[ $TYPE == "part" ]] && \
 	 [[ "$LABEL" != "BOOT" ]] && \
 	 [[ "$LABEL" != "ROOTFS" ]] && \
@@ -244,6 +267,8 @@ while read line ;do
    if findmnt -nl --source $NAME ;then
      echo "INFO: $NAME already mounted, skip."
    else
+     echo "INFO: re-read partition label,uuid. (SDAUTOPART)"
+     eval "$(blkid -o export ${NAME})"
      [[ x$LABEL != x ]] && target=/mnt/SDCARD/"$LABEL" || target=/mnt/SDCARD/"$UUID"
      test -d "$target" || mkdir -v "$target"
      case "$FSTYPE" in
@@ -265,6 +290,18 @@ while read line ;do
        touch $sdcard_mounted && \
        echo "INFO: mounted $NAME to '$target'"
      echo $NAME >> $mounted_srcs
+
+     # add to samba share
+     if ! grep -qi "${UUID}" /etc/samba/smb.conf ;then
+        echo "" >> /etc/samba/smb.conf
+        echo "[SDCardExt-${UUID}]" >> /etc/samba/smb.conf
+        echo "comment = ${LABEL} Storage" >> /etc/samba/smb.conf
+        echo "path = ${target}" >> /etc/samba/smb.conf
+        echo "read only = No" >> /etc/samba/smb.conf
+        echo "guest ok = Yes" >> /etc/samba/smb.conf
+
+        systemctl is-active smbd >/dev/null && systemctl restart smbd nmbd
+     fi
    fi
  fi
  unset RM TYPE LABEL UUID sd_pmntopts
@@ -281,7 +318,7 @@ for c in {3..1};do
        source /dev/shm/mount.sh
      fi
   done < $mounted_srcs
-  sleep 2
+  sleep 1
 done
 fi
 
