@@ -51,16 +51,41 @@ unload_all_usbdev(){
   modules_unload=($modules_unload)
   if [[ ${#modules_unload[@]} -gt 0 ]];then
     echo "# modules to be unload:  ${modules_unload[@]}"
-    sleep 3
+    sleep 1
     for ((i=0; i<${#modules_unload[@]}; i++))
     do
       modprobe -r ${modules_unload[$i]}
     done
   fi
+
+  echo "# deregister dwc_otg USB bus"
+  devlink=$(find /sys/bus/platform/drivers/dwc_otg -type l | xargs basename)
+  if [[ -n "${devlink}" ]];then
+    echo ${devlink} | tee /sys/bus/platform/drivers/dwc_otg/unbind
+  fi
 }
 
-
-
+pwroff_usbports(){
+  # uhub_num=$(uhubctl | grep 'Current status for hub'| wc -l)
+  # hub 2, RPi Model 3B Plus
+  # hub 1, RPi Model 3B
+  for hub in 1-1.1 1-1;
+  do
+    uhubctl -l ${hub} | grep -P '^\s+Port' | tac | while read line
+    do
+      if echo "${line}" | grep -q 'enable connect';then
+        break
+      else
+        port_num=$(echo "${line}" | awk '{print $2}'| sed 's,:,,')
+        if [[ -n ${port_num} ]]; then
+          [[ ${hub} == '1-1' && ${port_num} == 2 ]] && continue
+          echo "#   Hub ${hub} , USB Port ${port_num} power off ..."
+          uhubctl -l ${hub} -p ${port_num} -a off
+        fi
+      fi
+    done
+  done
+}
 
 
 
@@ -138,6 +163,7 @@ for (( i = 0; i < 1; i++ )); do
 
   if [[ "${i2sdev}" == none  ]];then
     echo "# You use USB DAC maybe,"
+
     echo "# Re-Schedule dwc_otg .... to CPU 0-1"
     ps -e -o pid,psr,comm,args | grep -Pi -- '-dwc_otg' | grep -v grep | awk '{print $1}' | while read pid;
     do
@@ -148,25 +174,7 @@ done
 
 
 echo "# Power off un-used usb ports ..."
-# uhub_num=$(uhubctl | grep 'Current status for hub'| wc -l)
-# hub 2, RPi Model 3B Plus
-# hub 1, RPi Model 3B
-for hub in 1-1.1 1-1;
-do
-  uhubctl -l ${hub} | grep -P '^\s+Port' | tac | while read line
-  do
-    if echo "${line}" | grep -q 'enable connect';then
-      break
-    else
-      port_num=$(echo "${line}" | awk '{print $2}'| sed 's,:,,')
-      if [[ -n ${port_num} ]]; then
-        [[ ${hub} == '1-1' && ${port_num} == 2 ]] && continue
-        echo "#   Hub ${hub} , USB Port ${port_num} power off ..."
-        uhubctl -l ${hub} -p ${port_num} -a off
-      fi
-    fi
-  done
-done
+pwroff_usbports
 
 
 echo "# WiFi setting ..."
@@ -197,9 +205,9 @@ if test -e $sdpart_flag ;then
       extrapart_geometry_a=($extrapart_geometry)
       # only apply to Free Space larger than 1GB (512*2097152)
       if [[ ${extrapart_geometry_a[2]%s} -gt 2097152 ]];then
-        parted -s ${boot_disk} mkpart primary ${extrapart_geometry_a[0]} ${extrapart_geometry_a[1]} 
-        lastpart_num=$(partprobe -s ${boot_disk} | awk '{print $NF}') 
-        lastpart_name=${boot_disk}p${lastpart_num} 
+        parted -s ${boot_disk} mkpart primary ${extrapart_geometry_a[0]} ${extrapart_geometry_a[1]}
+        lastpart_num=$(partprobe -s ${boot_disk} | awk '{print $NF}')
+        lastpart_name=${boot_disk}p${lastpart_num}
         eval "$(lsblk --pairs --noheadings --paths --bytes --output name,size,type,rm,uuid,label,fstype ${lastpart_name})"
         if [[ -z "${LABEL}" && -z ${FSTYPE} ]];then
           mkfs.vfat -n SDCARDEXT ${lastpart_name}
