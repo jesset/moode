@@ -14,6 +14,7 @@ export usb_mounted=/tmp/usb_mounted.lock
 export sdcard_mounted=/tmp/sdcard_mounted.lock
 export mount_opts="noexec,nodev,noatime,nodiratime"
 
+export eth0_up=1
 
 unload_eth0(){
   # Pi 3B
@@ -134,11 +135,13 @@ for c in {60..1};do
     eth0_stat=$(ip addr show dev eth0 | grep -Po 'state \S+' | cut -d ' ' -f 2)
     eth0_addr=$(ip addr show dev eth0 | grep -Po 'inet [\d\./]+' | cut -d ' ' -f 2)
     if [[ "${eth0_stat}" == "UP" ]]||[[ x${eth0_addr} != "x" ]];then
-      echo "# eth0 is in use, tunning..."
+      echo "# eth0 UP, tunning..."
       ethtool --set-eee eth0  eee off
       break
     else
       unload_eth0
+      echo "# eth0 DOWN"
+      eth0_up=0
       break
     fi
   else
@@ -151,9 +154,9 @@ done
 echo "# USB tunning..."
 for (( i = 0; i < 1; i++ )); do
   # Condition : Disable All USB Port, if any met:
-  # A. using i2c dac && eth0 not enabled && no usb-storage plugged
+  # A. using i2c dac && eth0 not enabled/UP && no usb-storage plugged
   # B. /boot/NOUSB flag touched
-  if ( [[ ${eth0chk} -eq 0  ]] && [[ "${i2sdev}" != none  ]] ) || test -e $nousb_flag ; then
+  if ( ( [[ ${eth0chk} -eq 0  ]] || [[ $eth0_up -eq 0 ]] ) && [[ "${i2sdev}" != none  ]] ) || test -e $nousb_flag ; then
     if ! lsusb -t | grep -q 'Driver=usb-storage'; then
       echo "# unload all usb port, eth0chk=${eth0chk}, i2sdev=${i2sdev}"
       unload_all_usbdev
