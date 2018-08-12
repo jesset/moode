@@ -203,7 +203,7 @@ if test -e $sdpart_flag ;then
     # create(restore) new partition(3rd partition)
     boot_disk=$(findmnt / -o SOURCE --noheadings)
     boot_disk=${boot_disk%p*}
-    extrapart_geometry=$(parted -s ${boot_disk} unit s print free | grep -i 'Free Space' | awk '{print $1,$2,$3}')
+    extrapart_geometry=$(parted -s ${boot_disk} unit s print free | grep -i 'Free Space' |tail -1| awk '{print $1,$2,$3}')
     if [[ -n "${extrapart_geometry}" ]];then
       extrapart_geometry_a=($extrapart_geometry)
       # only apply to Free Space larger than 1GB (512*2097152)
