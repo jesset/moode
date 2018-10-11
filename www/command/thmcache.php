@@ -292,7 +292,9 @@ function parseFolder($path) {
 	// default cover files
 	$covers = array(
 		'Cover.jpg', 'cover.jpg', 'Cover.jpeg', 'cover.jpeg', 'Cover.png', 'cover.png', 'Cover.tif', 'cover.tif', 'Cover.tiff', 'cover.tiff',
-		'Folder.jpg', 'folder.jpg', 'Folder.jpeg', 'folder.jpeg', 'Folder.png', 'folder.png', 'Folder.tif', 'folder.tif', 'Folder.tiff', 'folder.tiff'
+		'Folder.jpg', 'folder.jpg', 'Folder.jpeg', 'folder.jpeg', 'Folder.png', 'folder.png', 'Folder.tif', 'folder.tif', 'Folder.tiff', 'folder.tiff',
+        'Front.jpg', 'front.jpg', 'Front.jpeg', 'front.jpeg', 'Front.png', 'front.png', 'Front.tif', 'front.tif', 'Front.tiff', 'front.tiff',
+        'CD.jpg', 'cd.jpg', 'CD.jpeg', 'cd.jpeg', 'CD.png', 'cd.png', 'CD.tif', 'cd.tif', 'CD.tiff', 'cd.tiff'
 	);
 	foreach ($covers as $file) {
 		$result = getImage($path . $file);
