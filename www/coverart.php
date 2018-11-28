@@ -231,7 +231,6 @@ else {
 
 	//workerLog('coverart: c - ' . $dirpath);
 	// file: cover image file in containing dir
-	$dirpath = pathinfo($path, PATHINFO_DIRNAME) . '/';
 	parseFolder($dirpath);
 
 	if ($search_pri == 'Cover image file') { // embedded last
