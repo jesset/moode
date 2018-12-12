@@ -115,20 +115,20 @@ pcntl_signal(SIGHUP, SIG_IGN);
 workerLog('worker: Successfully daemonized');
 
 // exit if critical files are not factory default
-$critFiles = array('/etc/nginx/nginx.conf' => '7e56f9e40c523b58918564181d8d9165',
-'/etc/nginx/fastcgi_params' => '098049377f44266b682f7bd353356e00',
-'/etc/php/7.0/cli/php.ini' => '6dcfc250ae7d3a789b18b46a588c3c4f',
-'/etc/php/7.0/fpm/php.ini' => 'af8e38822925af808d30ebf616401c6b',
-'/etc/php/7.0/fpm/pool.d/www.conf' => '979c766ae5ae4edd8c06144c84845d64',
-'/etc/php/7.0/mods-available/opcache.ini' => '6d16a01beb94cc2e03e0702a637d4411',
-'/etc/memcached.conf' => '01f2be00de4c14650704401a86f0bbb0');
-foreach ($critFiles as $file => $hash) {
-	if (md5(file_get_contents($file)) !== $hash) {
-		workerLog('worker: Integrity check failed');
-		workerLog('worker: Exited');
-		exit;
-	}
-}
+//  $critFiles = array('/etc/nginx/nginx.conf' => '7e56f9e40c523b58918564181d8d9165',
+//  '/etc/nginx/fastcgi_params' => '098049377f44266b682f7bd353356e00',
+//  '/etc/php/7.0/cli/php.ini' => '6dcfc250ae7d3a789b18b46a588c3c4f',
+//  '/etc/php/7.0/fpm/php.ini' => 'af8e38822925af808d30ebf616401c6b',
+//  '/etc/php/7.0/fpm/pool.d/www.conf' => '979c766ae5ae4edd8c06144c84845d64',
+//  '/etc/php/7.0/mods-available/opcache.ini' => '6d16a01beb94cc2e03e0702a637d4411',
+//  '/etc/memcached.conf' => '01f2be00de4c14650704401a86f0bbb0');
+//  foreach ($critFiles as $file => $hash) {
+//  	if (md5(file_get_contents($file)) !== $hash) {
+//  		workerLog('worker: Integrity check failed');
+//  		workerLog('worker: Exited');
+//  		exit;
+//  	}
+//  }
 workerLog('worker: Integrity check ok');
 
 // cache cfg_system in session vars
