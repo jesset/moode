@@ -2466,6 +2466,13 @@ function cfgI2sOverlay($i2sDevice) {
 					sysCmd('echo dtoverlay=' . $result[0]['advdriver'] . ' >> ' . '/boot/config.txt');
 				}
 			}
+            // certain devices can get an extra overlay: 
+            //     Xiao ES90x8q2m IIS DAC :
+            //    【树莓派I2S-DSD播放器(支持DSD512)】https://m.tb.cn/h.3qQNInR?sm=d6a062
+            elseif ($i2sDevice == 'Xiao ES90x8q2m IIS DAC' ) {
+                    sysCmd('echo dtoverlay=' . $result[0]['driver'] . ' >> ' . '/boot/config.txt');
+                    sysCmd('echo dtoverlay=' . 'lirc-rpi,gpio_in_pin=4' . ' >> ' . '/boot/config.txt');
+            }
 			// single overlay only
 			else {
 				sysCmd('echo dtoverlay=' . $result[0]['advdriver'] . ' >> ' . '/boot/config.txt');
