@@ -58,7 +58,7 @@ case "${player}" in
     ps -q $master_pid -eL -o lwp,psr,cls,comm,args|awk '($5~"mpd" && ($4=="mpd" || $4=="player" || $4~"decoder" || $4=="io" || $4=="update")){print $1}'| while read tid;
     do
      taskset -p --cpu-list 2  $tid
-     chrt --rr -p 30 $tid
+     # chrt --rr -p 30 $tid
     done
   ;;
   squeezelite)
