@@ -9,7 +9,7 @@ lwp_num=${2:-3}
 waitfor(){
   proc=$1
   expect_lwp_num=${2:-1}
-  timeout=${3:-10}
+  timeout=${3:-5}
   for c in $(seq 1 ${timeout});do
     lwp_num=$(pgrep -wc ${proc})
     if [[ ${lwp_num} -lt ${expect_lwp_num} ]] ;then
@@ -76,6 +76,6 @@ case "${player}" in
 
 esac
 
-echo "#  Final CPU Affinity status for dwc_otg/${player}:"
-ps -q $(pgrep -d, 'mpd|squeezelite') -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
+# echo "#  Final CPU Affinity status for dwc_otg/${player}:"
+# ps -q $(pgrep -d, 'mpd|squeezelite') -eL -o class,pid,lwp,psr,rtprio,pri,nice,sched,comm,args
 
