@@ -2396,6 +2396,11 @@ function cfgI2sOverlay($i2sDevice) {
 	if ($i2sDevice == 'none') {
 		sysCmd('sed -i "s/dtparam=audio=off/dtparam=audio=on/" ' . '/boot/config.txt');
 	}
+    elseif ($i2sDevice == 'Xiao ES9028/9038 IIS DAC' ) {
+        $result = cfgdb_read('cfg_audiodev', cfgdb_connect(), $i2sDevice);
+        sysCmd('echo dtoverlay=' . $result[0]['driver'] . ' >> ' . '/boot/config.txt');
+        sysCmd('echo dtoverlay=' . 'lirc-rpi,gpio_in_pin=4' . ' >> ' . '/boot/config.txt');
+    }
 	else {
 		$result = cfgdb_read('cfg_audiodev', cfgdb_connect(), $i2sDevice);	
 		sysCmd('sed -i "s/dtparam=audio=on/dtparam=audio=off/" ' . '/boot/config.txt');
