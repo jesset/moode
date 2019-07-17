@@ -1,4 +1,6 @@
 #!/bin/bash
+# by jesset (github)
+
 # set -x
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export LANG=C
@@ -178,6 +180,33 @@ done
 
 echo "# Power off un-used usb ports ..."
 pwroff_usbports
+
+
+# For RPi-4b
+echo "INFO: all network device irq goes to CPU0"
+cat /proc/interrupts | awk '($NF ~ "mmc|eth"){print $1}' | tr -d : | while read _irq;do
+  echo -n "IRQ: ${_irq}, current cpus:"
+  cat "/proc/irq/${_irq}/smp_affinity_list"
+  echo 0 > "/proc/irq/${_irq}/smp_affinity_list"
+  echo -n "IRQ: ${_irq}, new cpus:"
+  cat "/proc/irq/${_irq}/smp_affinity_list"
+  echo
+done
+# pgrep 'mmc|eth' | xargs ps -o class,pid,lwp,psr,rtprio,pri,nice,sched,pcpu,comm,args -p
+pgrep 'mmc|eth' | xargs --verbose  -n 1 -r  taskset -pc 0
+
+echo "INFO: all USB device irq goes to CPU1"
+cat /proc/interrupts | awk '($NF ~ "ehci|ohci|xhci|otg|usb"){print $1}' | tr -d : | while read usb_irq;do
+  echo -n "IRQ: ${usb_irq}, current cpus:"
+  cat "/proc/irq/${usb_irq}/smp_affinity_list"
+  echo 1 > "/proc/irq/${usb_irq}/smp_affinity_list"
+  echo -n "IRQ: ${usb_irq}, new cpus:"
+  cat "/proc/irq/${usb_irq}/smp_affinity_list"
+  echo
+done
+# pgrep 'ehci|ohci|xhci|otg|usb' | xargs ps -o class,pid,lwp,psr,rtprio,pri,nice,sched,pcpu,comm,args -p
+pgrep 'ehci|ohci|xhci|otg|usb' | xargs --verbose  -n 1 -r  taskset -pc 1
+
 
 
 echo "# WiFi setting ..."
