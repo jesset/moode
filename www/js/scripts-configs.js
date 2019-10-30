@@ -18,7 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-05-07 TC moOde 5.2
+ * 2019-08-08 TC moOde 6.0.0
  *
  */
 jQuery(document).ready(function($){ 'use strict';
@@ -33,10 +33,11 @@ jQuery(document).ready(function($){ 'use strict';
 	sendMoodeCmd('POST', 'updcfgsystem', {'library_pixelratio': window.devicePixelRatio});
 
 	// load current cfg
-	var result = sendMoodeCmd('GET', 'read_cfg_all');
+	var result = sendMoodeCmd('GET', 'read_cfgs_no_radio');
 	SESSION.json = result['cfg_system'];
 	THEME.json = result['cfg_theme'];
-	
+    NETWORK.json = result['cfg_network'];
+
 	var tempOp = themeOp;
 	if (themeOp == 0.74902) {tempOp = 0.1};
 
@@ -88,15 +89,32 @@ jQuery(document).ready(function($){ 'use strict';
 		$('.busy-spinner').show();
 	});
 
-	// eq configs
+	// EQ configs
 	$('#eqp-curve-name').change(function() {
 		//console.log('http://' + location.host + 'eqp-config.php?curve=' + $(this).val());
 		location.assign('http://' + location.host + '/eqp-config.php?curve=' + $(this).val());
-	});	                        
+	});
 	$('#eqg-curve-name').change(function() {
 		//console.log('http://' + location.host + 'eqg-config.php?curve=' + $(this).val());
 		location.assign('http://' + location.host + '/eqg-config.php?curve=' + $(this).val());
-	});	                        
+	});
+    $('#master-gain-up, #master-gain-dn').on('mousedown mouseup click', function(e) {
+    	if (e.type == 'mousedown') {
+    		var selector = $(this).attr('id');
+    	    eqGainUpdInterval = setInterval(function() {
+    			updEqpMasterGainSlider(selector);
+    	    },50); // ms
+    	}
+    	else if (e.type == 'mouseup') {
+    		clearInterval(eqGainUpdInterval);
+    	}
+    	else if (e.type == 'click') {
+    		updEqpMasterGainSlider($(this).attr('id'));
+    	}
+    });
+    $('#new-curvename').on('shown.bs.modal', function() {
+		$('#new-curvename-input').focus();
+	});
 
 	// network config show static on page load/reload
 	if ($('#eth0-method').length && $('#eth0-method').val() == 'static') {
@@ -105,7 +123,7 @@ jQuery(document).ready(function($){ 'use strict';
 	if ($('#wlan0-method').length && $('#wlan0-method').val() == 'static') {
 		$('#wlan0-static').show();
 	}
-	// network config show/hide static 
+	// show/hide static
 	$('#eth0-method').change(function() {
 		if ($(this).val() == 'static') {
 			$('#eth0-static').show();
@@ -113,32 +131,57 @@ jQuery(document).ready(function($){ 'use strict';
 		}
 		else {
 			$('#eth0-static').hide();
-		}                                                            
-	});	                        
+		}
+	});
 	$('#wlan0-method').change(function() {
 		if ($(this).val() == 'static') {
-			if($('#wlan0ssid').val() != '' && $('#wlan0ssid').val() != 'blank (activates AP mode)') {
-				$('#wlan0-static').show();
+			if ($('#wlan0ssid').val() != '' && $('#wlan0ssid').val() != 'None (activates AP mode)') {
+			 	$('#wlan0-static').show();
 				//$('#eth0-method').val('dhcp').change(); // prevent both from being set to 'static'
 			}
 			else {
 				notify('needssid', '');
-			}                                                            
+			}
 		}
+        else {
+            $('#wlan0-static').hide();
+        }
 	});
-	// network config ssid
+	// wlan0 ssid
 	$('#manual-ssid').on('shown.bs.modal', function() {
 		$('#wlan0otherssid').focus();
-	});  
+	});
 	$('#wlan0ssid').change(function() {
+        //console.log(NETWORK.json['wlan0']['wlanssid'], NETWORK.json['wlan0']['wlan_psk']);
+        if ($('#wlan0ssid').val() == NETWORK.json['wlan0']['wlanssid']) {
+            $('#wlan0pwd').val(NETWORK.json['wlan0']['wlan_psk']);
+        }
+        else {
+            $('#wlan0pwd').val('');
+        }
+
 		if ($('#wlan0-method').val() == 'static') {
-			if ($(this).val() == '' || $(this).val() == 'blank (activates AP mode)') {
+			if ($(this).val() == '' || $(this).val() == 'None (activates AP mode)') {
+                $('#wlan0-static').hide();
 				notify('needdhcp', '');
 			}
-		}                      
-	});	                        
+            else {
+                $('#wlan0-static').show();
+            }
+		}
+	});
+    // apd0 ssid
+    $('#apdssid').on('input', function() {
+        //console.log(NETWORK.json['apd0']['wlanssid'], NETWORK.json['apd0']['wlan_psk']);
+        if ($('#apdssid').val() == NETWORK.json['apd0']['wlanssid']) {
+            $('#apdpwd').val(NETWORK.json['apd0']['wlan_psk']);
+        }
+        else {
+            $('#apdpwd').val('');
+        }
+	});
 
-	// nas config protocol type flags
+	// music source protocols (type)
 	if ($('#type').length) {
 		$('#mounttype').val($('#type').val()); // hidden input on manual server entry
 	}
@@ -149,20 +192,29 @@ jQuery(document).ready(function($){ 'use strict';
 			$('#options').val('vers=1.0,sec=ntlm,ro,dir_mode=0777,file_mode=0777');
 			$('#info-mount-flags').html('vers=2.0 or 3.0 may be needed and/or sec=ntlm removed depending on what the NAS requires.');
 			$('#scan-btn').show();
+			$('#edit-server').show();
+			$('#advanced-options').show();
 		}
-		// nfs
-		else {
+		else if ($(this).val() == 'nfs') {
 			$('#userid-password').hide();
 			$('#options').val('ro,nolock');
 			$('#info-mount-flags').html('vers=1.0 or higher may be needed depending on what the NAS requires.');
 			$('#scan-btn').hide();
-		}                       
+			$('#edit-server').show();
+			$('#advanced-options').show();
+		}
+		else if ($(this).val() == 'upnp') {
+			$('#userid-password').hide();
+			$('#scan-btn').show();
+			$('#edit-server').hide();
+			$('#advanced-options').hide();
+		}
 	});
 
 	// nas config pre-load manual server entry
 	$('#manual-server').on('shown.bs.modal', function() {
 		$('#manualserver').focus();
-	});  
+	});
 	$('#editserver').click(function(e) {
 		$('#manualserver').val($('#address').val().trim());
 	});

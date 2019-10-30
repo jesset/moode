@@ -18,7 +18,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-06-12 TC moOde 5.3.1
+ * 2019-10-02 TC moOde 6.3.0
  *
  */
 
@@ -39,7 +39,7 @@ jQuery(document).ready(function($) { 'use strict';
 	//console.log(hiddenDiv.width() - hiddenDiv[0].clientWidth + 'px');
 
 	// load current cfg
-	var result = sendMoodeCmd('GET', 'read_cfg_all');
+	var result = sendMoodeCmd('GET', 'read_cfgs');
 	SESSION.json = result['cfg_system'];
 	THEME.json = result['cfg_theme'];
 	RADIO.json = result['cfg_radio'];
@@ -82,7 +82,7 @@ jQuery(document).ready(function($) { 'use strict';
 
 	accentColor = themeToColors(SESSION.json['accent_color']);
 	document.body.style.setProperty('--themetext', themeMcolor);
-	var radio1 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30'><circle fill='%23" + accentColor + "' cx='14' cy='14.5' r='11.5'/></svg>";
+	var radio1 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30'><circle fill='%23" + accentColor.substr(1) + "' cx='14' cy='14.5' r='11.5'/></svg>";
 	var test = getCSSRule('.toggle .toggle-radio');
 	test.style.backgroundImage='url("' + radio1 + '")';
 	adaptColor = themeColor;
@@ -102,7 +102,9 @@ jQuery(document).ready(function($) { 'use strict';
 	// connect to server engines
     engineMpd();
     engineCmd();
-    UI.clientIP = sendMoodeCmd('GET', 'clientip');
+
+    // NOTE: We may use this in the future
+    //UI.clientIP = sendMoodeCmd('GET', 'clientip');
 	//console.log(UI.clientIP);
 
 	// start radio, folder and library loads
@@ -161,6 +163,14 @@ jQuery(document).ready(function($) { 'use strict';
 		$('.volume-display').css('opacity', '');
 		$('.volume-display').text(SESSION.json['volknob']);
 	}
+
+    // Show or hide Play history item on system menu
+    if (SESSION.json['playhist'] == 'Yes') {
+        $('#playhistory-hide').css('display', 'block');
+    }
+    else {
+        $('#playhistory-hide').css('display', 'none');
+    }
 
 	// load swipe handler for top columns in library (mobile)
 	if (UI.mobile) {
@@ -233,6 +243,15 @@ jQuery(document).ready(function($) { 'use strict';
 		$('.folder-view-btn, .album-view-btn, .radio-view-btn').removeClass('active');
 		$('.tag-view-btn').addClass('active');
 		$('#lib-albumcover, #lib-albumcover-header, #index-albumcovers').hide();
+        $('.recently-added').css('margin-left', '-.25em');
+
+        if (SESSION.json['show_genres'] == 'Yes') {
+            $('#top-columns').removeClass('nogenre');
+        }
+        else {
+            $('#top-columns').addClass('nogenre');
+        }
+
 		setTimeout(function() {
 			$('img.lazy-tagview').lazyload({
 			    container: $('#lib-album')
@@ -251,6 +270,7 @@ jQuery(document).ready(function($) { 'use strict';
 		$('.album-view-btn').addClass('active');
 		$('#lib-albumcover, #lib-albumcover-header').show();
 		$('#top-columns, #bottom-row').css('display', 'none');
+        $('#albumview-header-text').text('Albums' + (SESSION.json['library_album_grouping'] != 'Album' ? ' by ' + SESSION.json['library_album_grouping'] : ''));
 		setTimeout(function() {
             $('img.lazy-albumview').lazyload({
 			    container: $('#lib-album')
@@ -300,6 +320,14 @@ jQuery(document).ready(function($) { 'use strict';
 		$('.tag-view-btn').addClass('active');
 		$('#lib-albumcover, #lib-albumcover-header, #index-albumcovers').hide();
 		$('#top-columns, #bottom-row').css('display', 'flex');
+        $('.recently-added').css('margin-left', '-.25em');
+
+        if (SESSION.json['show_genres'] == 'Yes') {
+            $('#top-columns').removeClass('nogenre');
+        }
+        else {
+            $('#top-columns').addClass('nogenre');
+        }
 
 		currentView = 'tag';
 		var result = sendMoodeCmd('POST', 'updcfgsystem', {'current_view': currentView}, true);
@@ -342,8 +370,10 @@ jQuery(document).ready(function($) { 'use strict';
 		$('.album-view-btn').addClass('active');
 		$('#lib-albumcover, #lib-albumcover-header, #index-albumcovers').show();
 		$('#top-columns, #bottom-row').css('display', 'none');
+        $('#albumview-header-text').text('Albums' + (SESSION.json['library_album_grouping'] != 'Album' ? ' by ' + SESSION.json['library_album_grouping'] : ''));
 		$('#lib-albumcover').css('height', '100%');
 		$('#tracklist-toggle').html('<i class="fal fa-list sx"></i> Show tracks');
+        $('.recently-added').css('margin-left', '');
 
 		currentView = 'album';
 		var result = sendMoodeCmd('POST', 'updcfgsystem', {'current_view': currentView}, true);
@@ -807,12 +837,14 @@ jQuery(document).ready(function($) { 'use strict';
 		}
 	});
 	$('#ra-home').click(function(e) {
-		$('#ra-filter-results').hide();
 		UI.raFolderLevel[4] = 0;
 		UI.pathr = '';
 		mpdDbCmd('lsinfo_radio', 'RADIO');
 		UI.radioPos = -1;
 		storeRadioPos(UI.radioPos)
+        $('#ra-filter-results').hide();
+        $("#searchResetRa").hide();
+        showSearchResetRa = false;
 	});
 	// refresh panel
 	$('#ra-refresh').click(function(e) {
@@ -820,6 +852,9 @@ jQuery(document).ready(function($) { 'use strict';
 		$('#database-radio').scrollTo(0, 200);
 		UI.radioPos = -1;
 		storeRadioPos(UI.radioPos)
+        $('#ra-filter-results').hide();
+        $("#searchResetRa").hide();
+        showSearchResetRa = false;
 	});
 	// create new station
 	$('#ra-new').click(function(e) {
@@ -831,6 +866,7 @@ jQuery(document).ready(function($) { 'use strict';
 	// radio search
 	$('#ra-filter').keyup(function(e){
 		if (!showSearchResetRa) {
+            $('#ra-filter-results').show();
 			$('#searchResetRa').show();
 			showSearchResetRa = true;
 		}
@@ -871,10 +907,10 @@ jQuery(document).ready(function($) { 'use strict';
 		}, 750);
 	});
 	$('#searchResetRa').click(function(e) {
-		$("#searchResetRa").hide();
-		showSearchResetRa = false;
 		$('.database-radio li').css('display', 'inline-block');
 		$('#ra-filter-results').html('');
+        $("#searchResetRa").hide();
+		showSearchResetRa = false;
 	});
 
     // playlist search
@@ -966,9 +1002,16 @@ jQuery(document).ready(function($) { 'use strict';
 				$('#lib-album-filter-results').html('');
 			}
 
-			if ($('.album-view-btn').hasClass('active')) {
+			if ($('.tag-view-btn').hasClass('active')) {
+				var lazyClass = 'img.lazy-tagview';
+				var lazyContainer = '#lib-album';
+			}
+			else {
+				var lazyClass = 'img.lazy-albumview';
+				var lazyContainer = '#lib-albumcover';
 				$('#bottom-row').css('display', 'none');
 			}
+
 		    $('#albumcovers .lib-entry').removeClass('active');
 		    $('#albumsList .lib-entry').removeClass('active');
 			$('#lib-albumcover').css('height', '100%');
@@ -976,8 +1019,7 @@ jQuery(document).ready(function($) { 'use strict';
 			$('#lib-albumcover').scrollTo(0, 200);
 			UI.libPos.fill(-3);
 
-			var lazyContainer = $('.tag-view-btn').hasClass('active') ? '#lib-album' : '#lib-albumcover';
-			$('img.lazy-tagview').lazyload({
+			$(lazyClass).lazyload({
 			    container: $(lazyContainer)
 			});
 		}, 750);
@@ -1202,6 +1244,7 @@ jQuery(document).ready(function($) { 'use strict';
 			$('#ss-toggle-pl i').addClass('fa-chevron-up');
 			clearTimeout(hudTimer);
 		}
+        document.body.style.setProperty('--textvariant', 'rgba(128,128,128,1.0)');
 		$('#ss-container-playlist').slideToggle(200, function(e) {
 			customScroll('ss-pl', parseInt(MPD.json['song']), 200);
 		});
@@ -1213,6 +1256,7 @@ jQuery(document).ready(function($) { 'use strict';
 		if ($('#screen-saver').css('display') == 'block' || SESSION.json['scnsaver_timeout'] != 'Never') {
 			$('#screen-saver').hide();
 			$('#ss-hud').hide();
+            setColors();
 			$('#playback-panel, #folder-panel, #library-panel, #radio-panel').removeClass('hidden');
 			$('#menu-top').show();
 			if (currentView.indexOf('playback') == -1) {

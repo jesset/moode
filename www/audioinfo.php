@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-06-12 TC moOde 5.3.1
+ * 2019-10-02 TC moOde 6.3.0
  *
  */
 
@@ -44,7 +44,7 @@ $result = sysCmd('pgrep -l bluealsa-aplay');
 $btactive = strpos($result[0], 'bluealsa-aplay') !== false ? true : false;
 
 //
-// IMPUT PROCESSING
+// IMPUT
 //
 
 if ($_SESSION['airplayactv'] == '1') {
@@ -85,69 +85,84 @@ else {
 	$status = parseStatus(getMpdStatus($sock));
 
 	if ($hwparams['status'] == 'active' || $_SESSION['audioout'] == 'Bluetooth') {
-		// dsd: DoP, Native bitstream, DSD-to-PCM
+		// DSD: DoP, Native bitstream
 		if ($status['audio_sample_depth'] == 'dsd64') {
-			$encoded_at = 'DSD64, 1 bit, 2.822 mbps Stereo';
+			$encoded_at = 'DSD64, 1 bit, 5.644 Mbps Stereo';
 			if ($cfg_mpd['dop'] == 'yes') {
 				$decoded_to = 'DoP 24 bit 176.4 kHz, Stereo';
-				$decode_rate = '8,467 mbps';
+				$decode_rate = '8.467 Mbps';
 			}
 			elseif ($hwparams['format'] == 'DSD bitstream') {
 				$decoded_to = 'DSD bitstream';
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 			else {
 				$decoded_to = 'PCM, ' . $hwparams['format'] . ' bit, ' . $hwparams['rate'] . ' kHz, ' . $hwparams['channels'];
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 		}
 		else if ($status['audio_sample_depth'] == 'dsd128') {
-			$encoded_at = 'DSD128, 1 bit, 5.644 msps Stereo';
+			$encoded_at = 'DSD128, 1 bit, 11.288 Mbps Stereo';
 			if ($cfg_mpd['dop'] == 'yes') {
 				$decoded_to = 'DoP 24 bit 352.8 kHz, Stereo';
-				$decode_rate = '16.934 mbps';
+				$decode_rate = '16.934 Mbps';
 			}
 			elseif ($hwparams['format'] == 'DSD bitstream') {
 				$decoded_to = 'DSD bitstream';
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 			else {
 				$decoded_to = 'PCM, ' . $hwparams['format'] . ' bit, ' . $hwparams['rate'] . ' kHz, ' . $hwparams['channels'];
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 		}
 		else if ($status['audio_sample_depth'] == 'dsd256') {
-			$encoded_at = 'DSD256, 1 bit, 11.288 msps Stereo';
+			$encoded_at = 'DSD256, 1 bit, 22.576 Mbps Stereo';
 			if ($cfg_mpd['dop'] == 'yes') {
 				$decoded_to = 'DoP 24 bit 705.6 kHz, Stereo';
-				$decode_rate = '33.868 mbps';
+				$decode_rate = '33.868 Mbps';
 			}
 			elseif ($hwparams['format'] == 'DSD bitstream') {
 				$decoded_to = 'DSD bitstream';
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 			else {
 				$decoded_to = 'PCM, ' . $hwparams['format'] . ' bit, ' . $hwparams['rate'] . ' kHz, ' . $hwparams['channels'];
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 		}
 		else if ($status['audio_sample_depth'] == 'dsd512') {
-			$encoded_at = 'DSD512, 1 bit, 22.576 msps Stereo';
+			$encoded_at = 'DSD512, 1 bit, 45.152 Mbps Stereo';
 			if ($cfg_mpd['dop'] == 'yes') {
 				$decoded_to = 'DoP 24 bit 1.411 MHz, Stereo';
-				$decode_rate = '67.736 mbps';
+				$decode_rate = '67.736 Mbps';
 			}
 			elseif ($hwparams['format'] == 'DSD bitstream') {
 				$decoded_to = 'DSD bitstream';
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 			else {
 				$decoded_to = 'PCM, ' . $hwparams['format'] . ' bit, ' . $hwparams['rate'] . ' kHz, ' . $hwparams['channels'];
-				$decode_rate = $hwparams['calcrate'] . ' mbps';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
+			}
+		}
+		else if ($status['audio_sample_depth'] == 'dsd1024') {
+			$encoded_at = 'DSD1024, 1 bit, 90.304 Mbps Stereo';
+			if ($cfg_mpd['dop'] == 'yes') {
+				$decoded_to = 'DoP 24 bit 2.822 MHz, Stereo';
+				$decode_rate = '135.472 Mbps';
+			}
+			elseif ($hwparams['format'] == 'DSD bitstream') {
+				$decoded_to = 'DSD bitstream';
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
+			}
+			else {
+				$decoded_to = 'PCM, ' . $hwparams['format'] . ' bit, ' . $hwparams['rate'] . ' kHz, ' . $hwparams['channels'];
+				$decode_rate = $hwparams['calcrate'] . ' Mbps';
 			}
 		}
 
-		// pcm
+		// PCM
 		else {
 			$decoded_to = $status['audio_sample_depth'] . ' bit, ' . $status['audio_sample_rate'];
 			$decoded_to .= empty($status['audio_sample_rate']) ? '' : ' kHz, ' . $status['audio_channels'];
@@ -163,29 +178,73 @@ else {
 }
 
 //
-// DSP OPERATIONS
+// OUTPUT
 //
 
-// dsp only applies to mpd
-if ($_SESSION['airplayactv'] == '1' || $_SESSION['spotactive'] == '1' || $_SESSION['slactive'] == '1' || $btactive === true) {
-	$resampler = 'n/a';
-	$resampler_format = '';
-	$crossfeed = 'n/a';
-	$equalizer = 'n/a';
-	$crossfade = 'n/a';
-	$otherdsp = 'n/a';
+$output_destination = $_SESSION['audioout'];
+if ($_SESSION['audioout'] == 'Bluetooth') {
+	$hwparams_format = '16 bit, 44.1 kHz, Stereo, ';
+	$hwparams_calcrate = '1.411 Mbps';
+}
+elseif ($hwparams['status'] == 'active') {
+	$hwparams_format = $hwparams['format'] . ' bit, ' . $hwparams['rate'] . ' kHz, ' . $hwparams['channels'];
+	$hwparams_calcrate = ', ' . $hwparams['calcrate'] . ' Mbps';
 }
 else {
-	// resampling
+	$hwparams_format = '';
+	$hwparams_calcrate = '0 bps';
+}
+
+//
+// DSP
+//
+
+// Volume control
+if ($_SESSION['mpdmixer'] == 'hardware') {
+	$volume_ctl = 'Hardware (on-chip volume controller)';
+}
+elseif ($_SESSION['mpdmixer'] == 'software') {
+	$volume_ctl = 'Software (MPD 32-bit float with dither)';
+}
+else {
+	$volume = 'Disabled (100% volume level is output by MPD)';
+}
+
+// Renderers
+if ($_SESSION['airplayactv'] == '1' || $_SESSION['spotactive'] == '1' || $_SESSION['slactive'] == '1' || $_SESSION['inpactive'] == '1' || $btactive === true) {
+	$resampler_format = '';
+	$resampler_quality = 'n/a';
+	$polarity = 'n/a';
+	$crossfade = 'n/a';
+	$crossfeed = 'n/a';
+	$replaygain = 'n/a';
+	$vol_normalize = 'n/a';
+
+	if ($_SESSION['airplayactv'] == '1' || $_SESSION['spotactive'] == '1') {
+		$peq = $_SESSION['eqfa4p'] == 'Off' ? 'off' : $_SESSION['eqfa4p'];
+		$geq = $_SESSION['alsaequal'] == 'Off' ? 'off' : $_SESSION['alsaequal'];
+	}
+	else {
+		$peq = 'n/a';
+		$geq = 'n/a';
+	}
+}
+// MPD
+else {
+	// Resampling
 	if ($cfg_mpd['audio_output_format'] == 'disabled') {
-		$resampler = 'off';
 		$resampler_format = '';
+		$resampler_quality = 'off';
 	}
 	else {
 		$resampler_format = $cfg_mpd['audio_output_depth'] . ' bit, ' . $cfg_mpd['audio_output_rate'] . ' kHz, ' . $cfg_mpd['audio_output_chan'];
-		$resampler = ' (SoX ' . $cfg_mpd['samplerate_converter'] . ' quality)';
+		$resampler_quality = ' (SoX ' . $cfg_mpd['samplerate_converter'] . ' quality)';
 	}
-	// crossfeed
+	// Polarity inversion
+	$polarity_inv = $_SESSION['invert_polarity'] == '0' ? 'off' : 'on';
+	// MPD Crossfade
+	$crossfade = $_SESSION['mpdcrossfade'] == '0' ? 'off' : $_SESSION['mpdcrossfade'] . ' seconds';
+	// Crossfeed
 	if ($_SESSION['crossfeed'] != 'Off') {
 		$array = explode(' ', $_SESSION['crossfeed']);
 		$crossfeed = $array[0] . ' Hz ' . $array[1] . ' dB';
@@ -193,63 +252,77 @@ else {
 	else {
 		$crossfeed = 'off';
 	}
-	// equalizers
-	$geq = $_SESSION['alsaequal'] == 'Off' ? 'off' : $_SESSION['alsaequal'];
+	// Equalizers
 	$peq = $_SESSION['eqfa4p'] == 'Off' ? 'off' : $_SESSION['eqfa4p'];
-	$equalizer = 'Graphic EQ: (' . $geq . '), Parametric EQ: (' . $peq . ')';
-	// crossfade and other dsp
-	$crossfade = $_SESSION['mpdcrossfade'] . ' seconds';
-	$otherdsp = 'Volume normalize (' . $cfg_mpd['volume_normalization'] . '), ' . 'Replaygain (' . $cfg_mpd['replaygain'] . ')';
+	$geq = $_SESSION['alsaequal'] == 'Off' ? 'off' : $_SESSION['alsaequal'];
+	// Replaygain and volume normalization
+	$replaygain = $cfg_mpd['replaygain'];
+	$vol_normalize = $cfg_mpd['volume_normalization'] == 'no' ? 'off' : $cfg_mpd['volume_normalization'];
 }
 // chip options
 $result = cfgdb_read('cfg_audiodev', $dbh, $_SESSION['i2sdevice']);
-$chips = array('Burr Brown PCM5242','Burr Brown PCM5142','Burr Brown PCM5122','Burr Brown PCM5121','Burr Brown PCM5122 (PCM5121)','Burr Brown TAS5756');
-if (in_array($result[0]['dacchip'], $chips) && $result[0]['chipoptions'] != '') {
-	$array = explode(',', $result[0]['chipoptions']);
+$array = explode(',', $result[0]['chipoptions']);
 
-	$analoggain = $array[0] === '100' ? '0 dB' : '-6 dB'; // Analog gain
-	$analogboost = $array[1] === '100' ? '.8 dB' : '0 dB'; // Analog gain boost
-	$digfilter = $array[2]; // Digital interpolation filter
+if (strpos($result[0]['dacchip'], 'PCM5') !== false || strpos($result[0]['dacchip'], 'TAS') !== false) {
+	 // Analog gain, analog gain boost, digital interpolation filter
+	$analoggain = $array[0] === '100' ? '0dB' : '-6dB';
+	$analogboost = $array[1] === '100' ? '.8dB' : '0dB';
+	$digfilter = $array[2];
+	$chip_options = $digfilter . ', Gain=' . $analoggain . ', Boost=' . $analogboost;
+}
+elseif ($_SESSION['i2sdevice'] == 'Allo Piano 2.1 Hi-Fi DAC') {
+	// get current settings
+	$dualmode = sysCmd('/var/www/command/util.sh get-piano-dualmode');
+	$submode = sysCmd('/var/www/command/util.sh get-piano-submode');
+	$subvol = sysCmd('/var/www/command/util.sh get-piano-subvol');
+	$lowpass = sysCmd('/var/www/command/util.sh get-piano-lowpass');
 
-	$chip_options = $digfilter . ', gain=' . $analoggain . ', boost=' . $analogboost;
+	// determine output mode
+	if ($dualmode[0] != 'None') {
+		$outputmode = $dualmode[0];
+		$sub_vol = '';
+		$low_pass = '';
+	}
+	elseif ($submode[0] == '2.0') {
+		$outputmode = 'Stereo';
+		$sub_vol = '';
+		$low_pass = '';
+	}
+	else {
+		$outputmode = 'Subwoofer' . $submode[0];
+		$sub_vol = 'Volume=' . $subvol;
+		$low_pass = 'Lowpass=' . $lowpass;
+	}
+
+	$chip_options = 'Mode=' . $outputmode . $sub_vol . $low_pass;
+}
+elseif ($_SESSION['i2sdevice'] == 'Allo Katana DAC') {
+	// Oversampling filter, de-emphasis, DoP
+	$katana_osf = $array[0];
+	$katana_deemphasis = $array[1];
+	$katana_dop = $array[2];
+	$chip_options = $katana_osf . ', De-emphasis=' . $katana_deemphasis . ', DoP=' . $katana_dop;
+
+}
+elseif ($_SESSION['i2sdevice'] == 'Audiophonics ES9028/9038 DAC' || $_SESSION['i2sdevice'] == 'Audiophonics ES9028/9038 DAC (Pre 2019)') {
+	$audiophonics_q2m_osf = $array[0];
+	$audiophonics_q2m_input = $array[1];
+	$chip_options = 'Filter=' . $audiophonics_q2m_osf . ', Input=' . $audiophonics_q2m_input;
 }
 else {
-	$chip_options = 'none';
-}
-// volume control
-if ($_SESSION['mpdmixer'] == 'hardware') {
-	$volume = 'Hardware (on-chip volume controller)';
-}
-else if ($_SESSION['mpdmixer'] == 'software') {
-	$volume = 'Software (MPD 32-bit float with dither)';
-}
-else {
-	$volume = 'Disabled (100% volume level is output by MPD)';
+	$chip_options = 'None';
 }
 
 //
-// OUTPUT PROCESSING
+// AUDIO DEVICE
 //
 
-$output_destination = $_SESSION['audioout'];
-if ($_SESSION['audioout'] == 'Bluetooth') {
-	$hwparams_format = '16 bit, 44.1 kHz, Stereo, ';
-	$hwparams_calcrate = '1.411 mbps';
-}
-elseif ($hwparams['status'] == 'active') {
-	$hwparams_format = $hwparams['format'] . ' bit, ' . $hwparams['rate'] . ' kHz, ' . $hwparams['channels'];
-	$hwparams_calcrate = ', ' . $hwparams['calcrate'] . ' mbps';
-}
-else {
-	$hwparams_format = '';
-	$hwparams_calcrate = '0 bps';
-}
-
-// audio device
 $result = cfgdb_read('cfg_audiodev', $dbh, $_SESSION['adevname']);
 $devname = $_SESSION['adevname'];
 $dacchip = $result[0]['dacchip'];
 $iface = $result[0]['iface'];
+$audio_formats = $_SESSION['audio_formats'];
+$hdwr_rev = $_SESSION['hdwrrev'];
 
 $tpl = 'audioinfo.html';
 eval('echoTemplate("' . getTemplate("templates/$tpl") . '");');

@@ -1,4 +1,4 @@
-<?php 
+<?php
 /**
  * moOde audio player (C) 2014 Tim Curtis
  * http://moodeaudio.org
@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-05-07 TC moOde 5.2
+ * 2019-08-08 TC moOde 6.0.0
  *
  */
 
@@ -31,7 +31,7 @@ if (isset($_POST['update_i2s_device'])) {
 	if (isset($_POST['i2sdevice'])) {
 		playerSession('write', 'i2sdevice', $_POST['i2sdevice']);
 		submitJob('i2sdevice', $_POST['i2sdevice'], 'I2S audio device updated', '- Edit Driver options<br>- Reboot then edit Chip options', 20);
-	} 
+	}
 }
 
 // advanced driver options
@@ -43,7 +43,7 @@ if (isset($_POST['update_drvoptions'])) {
 
 		$result = sdbquery("UPDATE cfg_audiodev SET driver='" . $driverupd . "' WHERE name='" . $_SESSION['i2sdevice'] . "'", cfgdb_connect());
 		submitJob('i2sdevice', $_SESSION['i2sdevice'], 'Driver options updated', 'Reboot required');
-	} 
+	}
 }
 
 // alsa volume
@@ -60,7 +60,7 @@ if (isset($_POST['update_alsa_volume'])) {
 if (isset($_POST['update_mpdver'])) {
 	playerSession('write', 'mpdver', $_POST['mpdver']);
 	submitJob('mpdver', $_POST['mpdver'], 'MPD ' . $_POST['mpdver'] . ' installed', 'Database rebuild started...');
-} 
+}
 
 // restart mpd
 if (isset($_POST['mpdrestart']) && $_POST['mpdrestart'] == 1) {
@@ -99,7 +99,7 @@ if (isset($_POST['update_rotenc'])) {
 	if (isset($_POST['rotenc_params']) && $_POST['rotenc_params'] != $_SESSION['rotenc_params']) {
 		$title = 'Rotenc params updated';
 		playerSession('write', 'rotenc_params', $_POST['rotenc_params']);
-	} 
+	}
 
 	if (isset($_POST['rotaryenc']) && $_POST['rotaryenc'] != $_SESSION['rotaryenc']) {
 		$title = $_POST['rotaryenc'] == 1 ? 'Rotary encoder on' : 'Rotary encoder off';
@@ -109,7 +109,7 @@ if (isset($_POST['update_rotenc'])) {
 	if (isset($title)) {
 		submitJob('rotaryenc', $_POST['rotaryenc'], $title, '');
 	}
-} 
+}
 
 // polarity inversion
 if (isset($_POST['update_invert_polarity']) && $_POST['invert_polarity'] != $_SESSION['invert_polarity']) {
@@ -172,7 +172,7 @@ if (isset($_POST['update_bt_settings'])) {
 	if (isset($_POST['btname']) && $_POST['btname'] != $_SESSION['btname']) {
 		$title = 'Bluetooth name updated';
 		playerSession('write', 'btname', $_POST['btname']);
-	} 
+	}
 
 	if (isset($_POST['btsvc']) && $_POST['btsvc'] != $_SESSION['btsvc']) {
 		$title = $_POST['btsvc'] == 1 ? 'Bluetooth controller on' : 'Bluetooth controller off';
@@ -208,7 +208,7 @@ if (isset($_POST['update_airplay_settings'])) {
 	if (isset($_POST['airplayname']) && $_POST['airplayname'] != $_SESSION['airplayname']) {
 		$title = 'Airplay name updated';
 		playerSession('write', 'airplayname', $_POST['airplayname']);
-	} 
+	}
 
 	if (isset($_POST['airplaysvc']) && $_POST['airplaysvc'] != $_SESSION['airplaysvc']) {
 		$title = $_POST['airplaysvc'] == 1 ? 'Airplay receiver on' : 'Airplay receiver off';
@@ -234,7 +234,7 @@ if (isset($_POST['update_spotify_settings'])) {
 	if (isset($_POST['spotifyname']) && $_POST['spotifyname'] != $_SESSION['spotifyname']) {
 		$title = 'Spotify name updated';
 		playerSession('write', 'spotifyname', $_POST['spotifyname']);
-	} 
+	}
 
 	if (isset($_POST['spotifysvc']) && $_POST['spotifysvc'] != $_SESSION['spotifysvc']) {
 		$title = $_POST['spotifysvc'] == 1 ? 'Spotify receiver on' : 'Spotify receiver off';
@@ -253,6 +253,10 @@ if (isset($_POST['update_rsmafterspot'])) {
 // restart spotify
 if (isset($_POST['spotifyrestart']) && $_POST['spotifyrestart'] == 1 && $_SESSION['spotifysvc'] == '1') {
 	submitJob('spotifysvc', '', 'Spotify receiver restarted', '');
+}
+// clear credential cache
+if (isset($_POST['spotify_clear_credentials']) && $_POST['spotify_clear_credentials'] == 1) {
+	submitJob('spotify_clear_credentials', '', 'Credential cache cleared', '');
 }
 
 // SQUEEZELITE RENDERER
@@ -276,7 +280,9 @@ if (isset($_POST['slrestart']) && $_POST['slrestart'] == 1) {
 	submitJob('slrestart', '', 'Squeezelite restarted', '');
 }
 
-// upnp mpd proxy
+// UPNP/DLNA
+
+// upnp client for mpd
 if (isset($_POST['update_upnp_settings'])) {
 	$currentUpnpName = $_SESSION['upnpname'];
 
@@ -288,13 +294,13 @@ if (isset($_POST['update_upnp_settings'])) {
 	if (isset($_POST['upnpsvc']) && $_POST['upnpsvc'] != $_SESSION['upnpsvc']) {
 		$title = $_POST['upnpsvc'] == 1 ? 'UPnP renderer on' : 'UPnP renderer off';
 		playerSession('write', 'upnpsvc', $_POST['upnpsvc']);
-	} 
+	}
 
 	if (isset($title)) {
 		submitJob('upnpsvc', '"' . $currentUpnpName . '" ' . '"' . $_POST['upnpname'] . '"', $title, '');
 	}
 }
-// restart upnp
+// restart upnp client
 if (isset($_POST['upnprestart']) && $_POST['upnprestart'] == 1 && $_SESSION['upnpsvc'] == '1') {
 	submitJob('upnpsvc', '', 'UPnP renderer restarted', '');
 }
@@ -312,7 +318,7 @@ if (isset($_POST['update_dlna_settings'])) {
 		$title = $_POST['dlnasvc'] == 1 ? 'DLNA server on' : 'DLNA server off';
 		$msg = $_POST['dlnasvc'] == 1 ? 'DB rebuild initiated' : '';
 		playerSession('write', 'dlnasvc', $_POST['dlnasvc']);
-	} 
+	}
 
 	if (isset($title)) {
 		submitJob('minidlna', '"' . $currentDlnaName . '" ' . '"' . $_POST['dlnaname'] . '"', $title, $msg);
@@ -322,10 +328,26 @@ if (isset($_POST['update_dlna_settings'])) {
 if (isset($_POST['rebuild_dlnadb'])) {
 	if ($_SESSION['dlnasvc'] == 1) {
 		submitJob('dlnarebuild', '', 'DB rebuild initiated', '');
-	} else {
+	}
+	else {
 		$_SESSION['notify']['title'] = 'Turn DLNA server on';
 		$_SESSION['notify']['msg'] = 'DB rebuild will initiate';
 	}
+}
+// upnp browser
+if (isset($_POST['update_upnp_browser'])) {
+	if (isset($_POST['upnp_browser']) && $_POST['upnp_browser'] != $_SESSION['upnp_browser']) {
+		$title = $_POST['upnp_browser'] == 1 ? 'UPnP browser on' : 'UPnP browser off';
+		playerSession('write', 'upnp_browser', $_POST['upnp_browser']);
+	}
+
+	if (isset($title)) {
+		submitJob('upnp_browser', $_POST['upnp_browser'], $title, '');
+	}
+}
+// restart upnp browser
+if (isset($_POST['upnp_browser_restart']) && $_POST['upnp_browser_restart'] == 1 && $_SESSION['upnp_browser'] == '1') {
+	submitJob('upnp_browser', '', 'UPnP browser restarted', '');
 }
 
 // SERVICES
@@ -336,11 +358,11 @@ if (isset($_POST['update_mpdas'])) {
 		$title = "Scrobbler credentials updated";
 		playerSession('write', 'mpdasuser', $_POST['mpdasuser']);
 	}
- 
+
 	if (isset($_POST['mpdaspwd']) && $_POST['mpdaspwd'] != $_SESSION['mpdaspwd']) {
 		$title = "Scrobbler credentials updated";
 		playerSession('write', 'mpdaspwd', $_POST['mpdaspwd']);
-	} 
+	}
 
 	if (isset($_POST['mpdassvc']) && $_POST['mpdassvc'] != $_SESSION['mpdassvc']) {
 		$title = $_POST['mpdassvc'] == 1 ? 'Audio Scrobbler on' : 'Audio Scrobbler off';
@@ -378,13 +400,8 @@ else {
 }
 
 // chip/device options
-if (empty($result[0]['chipoptions'])) {
-	$_chipoptions_btn = '<button class="btn btn-primary btn-medium" style="margin-top:0px;" disabled>Edit options</button><br>';
-}
-else {
-	//$_chipoptions_btn = '<a class="btn btn-primary btn-medium" style="margin-top:0px;" href="chp-config.php">Edit options</a><br>';
-	$_chipoptions_btn = '<a href="chp-config.php"><button class="btn btn-primary btn-medium" style="margin-top:0px;">Edit options</button></a><br>';
-}
+$_chip_btn_disable = !empty($result[0]['chipoptions']) ? '' : 'disabled';
+$_chip_link_disable = !empty($result[0]['chipoptions']) ? '' : 'onclick="return false;"';
 
 // alsa volume
 if ($_SESSION['alsavolume'] == 'none') {
@@ -410,7 +427,7 @@ else {
 
 // mpd version
 $_select['mpdver'] .= "<option value=\"0.20.23\" " . (($_SESSION['mpdver'] == '0.20.23') ? "selected" : "") . ">0.20.23 (Default)</option>\n";
-$_select['mpdver'] .= "<option value=\"0.21.8\" " . (($_SESSION['mpdver'] == '0.21.8') ? "selected" : "") . ">0.21.8 (Testing)</option>\n";
+$_select['mpdver'] .= "<option value=\"0.21.15\" " . (($_SESSION['mpdver'] == '0.21.15') ? "selected" : "") . ">0.21.15 (Testing)</option>\n";
 
 // auto-shuffle
 $_select['ashufflesvc1'] .= "<input type=\"radio\" name=\"ashufflesvc\" id=\"toggleashufflesvc1\" value=\"1\" " . (($_SESSION['ashufflesvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
@@ -482,6 +499,8 @@ foreach ($curveList as $curve) {
 // RENDERERS
 
 // bluetooth
+$_SESSION['btsvc'] == '1' ? $_bt_btn_disable = '' : $_bt_btn_disable = 'disabled';
+$_SESSION['btsvc'] == '1' ? $_bt_link_disable = '' : $_bt_link_disable = 'onclick="return false;"';
 $_select['btsvc1'] .= "<input type=\"radio\" name=\"btsvc\" id=\"togglebtsvc1\" value=\"1\" " . (($_SESSION['btsvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 $_select['btsvc0'] .= "<input type=\"radio\" name=\"btsvc\" id=\"togglebtsvc2\" value=\"0\" " . (($_SESSION['btsvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 $_select['btname'] = $_SESSION['btname'];
@@ -491,17 +510,17 @@ $_select['btmulti1'] .= "<input type=\"radio\" name=\"btmulti\" id=\"togglebtmul
 $_select['btmulti0'] .= "<input type=\"radio\" name=\"btmulti\" id=\"togglebtmulti2\" value=\"0\" " . (($_SESSION['btmulti'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 $_select['rsmafterbt'] .= "<option value=\"1\" " . (($_SESSION['rsmafterbt'] == '1') ? "selected" : "") . ">Yes</option>\n";
 $_select['rsmafterbt'] .= "<option value=\"0\" " . (($_SESSION['rsmafterbt'] == '0') ? "selected" : "") . ">No</option>\n";
-$_bt_restart = $_SESSION['btsvc'] == '1' ? '#bt-restart' : '#notarget';
 
 // airplay
 if ($_SESSION['feat_bitmask'] & FEAT_AIRPLAY) {
 	$_feat_airplay = '';
+	$_SESSION['airplaysvc'] == '1' ? $_airplay_btn_disable = '' : $_airplay_btn_disable = 'disabled';
+	$_SESSION['airplaysvc'] == '1' ? $_airplay_link_disable = '' : $_airplay_link_disable = 'onclick="return false;"';
 	$_select['airplaysvc1'] .= "<input type=\"radio\" name=\"airplaysvc\" id=\"toggleairplaysvc1\" value=\"1\" " . (($_SESSION['airplaysvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['airplaysvc0'] .= "<input type=\"radio\" name=\"airplaysvc\" id=\"toggleairplaysvc2\" value=\"0\" " . (($_SESSION['airplaysvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['airplayname'] = $_SESSION['airplayname'];
 	$_select['rsmafterapl'] .= "<option value=\"Yes\" " . (($_SESSION['rsmafterapl'] == 'Yes') ? "selected" : "") . ">Yes</option>\n";
 	$_select['rsmafterapl'] .= "<option value=\"No\" " . (($_SESSION['rsmafterapl'] == 'No') ? "selected" : "") . ">No</option>\n";
-	$_airplay_restart = $_SESSION['airplaysvc'] == '1' ? '#airplay-restart' : '#notarget';
 }
 else {
 	$_feat_airplay = 'hide';
@@ -510,12 +529,13 @@ else {
 // spotify
 if ($_SESSION['feat_bitmask'] & FEAT_SPOTIFY) {
 	$_feat_spotify = '';
+	$_SESSION['spotifysvc'] == '1' ? $_spotify_btn_disable = '' : $_spotify_btn_disable = 'disabled';
+	$_SESSION['spotifysvc'] == '1' ? $_spotify_link_disable = '' : $_spotify_link_disable = 'onclick="return false;"';
 	$_select['spotifysvc1'] .= "<input type=\"radio\" name=\"spotifysvc\" id=\"togglespotifysvc1\" value=\"1\" " . (($_SESSION['spotifysvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['spotifysvc0'] .= "<input type=\"radio\" name=\"spotifysvc\" id=\"togglespotifysvc2\" value=\"0\" " . (($_SESSION['spotifysvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['spotifyname'] = $_SESSION['spotifyname'];
 	$_select['rsmafterspot'] .= "<option value=\"Yes\" " . (($_SESSION['rsmafterspot'] == 'Yes') ? "selected" : "") . ">Yes</option>\n";
 	$_select['rsmafterspot'] .= "<option value=\"No\" " . (($_SESSION['rsmafterspot'] == 'No') ? "selected" : "") . ">No</option>\n";
-	$_spotify_restart = $_SESSION['spotifysvc'] == '1' ? '#spotify-restart' : '#notarget';
 }
 else {
 	$_feat_spotify = 'hide';
@@ -524,25 +544,27 @@ else {
 // squeezelite renderer
 if ($_SESSION['feat_bitmask'] & FEAT_SQUEEZELITE) {
 	$_feat_squeezelite = '';
+	$_SESSION['slsvc'] == '1' ? $_sl_btn_disable = '' : $_sl_btn_disable = 'disabled';
+	$_SESSION['slsvc'] == '1' ? $_sl_link_disable = '' : $_sl_link_disable = 'onclick="return false;"';
 	$_select['slsvc1'] .= "<input type=\"radio\" name=\"slsvc\" id=\"toggleslsvc1\" value=\"1\" " . (($_SESSION['slsvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['slsvc0'] .= "<input type=\"radio\" name=\"slsvc\" id=\"toggleslsvc2\" value=\"0\" " . (($_SESSION['slsvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['rsmaftersl'] .= "<option value=\"Yes\" " . (($_SESSION['rsmaftersl'] == 'Yes') ? "selected" : "") . ">Yes</option>\n";
 	$_select['rsmaftersl'] .= "<option value=\"No\" " . (($_SESSION['rsmaftersl'] == 'No') ? "selected" : "") . ">No</option>\n";
-	$_sl_restart = $_SESSION['slsvc'] == '1' ? '#sl-restart' : '#notarget';
 }
 else {
 	$_feat_squeezelite = 'hide';
 }
 
-// UPNP
+// UPnP/DLNA
 
 // upnp mpd proxy
 if ($_SESSION['feat_bitmask'] & FEAT_UPMPDCLI) {
 	$_feat_upmpdcli = '';
+	$_SESSION['upnpsvc'] == '1' ? $_upnp_btn_disable = '' : $_upnp_btn_disable = 'disabled';
+	$_SESSION['upnpsvc'] == '1' ? $_upnp_link_disable = '' : $_upnp_link_disable = 'onclick="return false;"';
 	$_select['upnpsvc1'] .= "<input type=\"radio\" name=\"upnpsvc\" id=\"toggleupnpsvc1\" value=\"1\" " . (($_SESSION['upnpsvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['upnpsvc0'] .= "<input type=\"radio\" name=\"upnpsvc\" id=\"toggleupnpsvc2\" value=\"0\" " . (($_SESSION['upnpsvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['upnpname'] = $_SESSION['upnpname'];
-	$_upnp_restart = $_SESSION['upnpsvc'] == '1' ? '#upnp-restart' : '#notarget';
 }
 else {
 	$_feat_upmpdcli = 'hide';
@@ -551,6 +573,8 @@ else {
 // dlna server
 if ($_SESSION['feat_bitmask'] & FEAT_MINIDLNA) {
 	$_feat_minidlna = '';
+	$_SESSION['dlnasvc'] == '1' ? $_dlna_btn_disable = '' : $_dlna_btn_disable = 'disabled';
+	$_SESSION['dlnasvc'] == '1' ? $_dlna_link_disable = '' : $_dlna_link_disable = 'onclick="return false;"';
 	$_select['dlnasvc1'] .= "<input type=\"radio\" name=\"dlnasvc\" id=\"toggledlnasvc1\" value=\"1\" " . (($_SESSION['dlnasvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['dlnasvc0'] .= "<input type=\"radio\" name=\"dlnasvc\" id=\"toggledlnasvc2\" value=\"0\" " . (($_SESSION['dlnasvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['dlnaname'] = $_SESSION['dlnaname'];
@@ -558,6 +582,18 @@ if ($_SESSION['feat_bitmask'] & FEAT_MINIDLNA) {
 }
 else {
 	$_feat_minidlna = 'hide';
+}
+
+// upnp browser
+if ($_SESSION['feat_bitmask'] & FEAT_DJMOUNT) {
+	$_feat_djmount = '';
+	$_SESSION['upnp_browser'] == '1' ? $_djmount_btn_disable = '' : $_djmount_btn_disable = 'disabled';
+	$_SESSION['upnp_browser'] == '1' ? $_djmount_link_disable = '' : $_djmount_link_disable = 'onclick="return false;"';
+	$_select['upnp_browser1'] .= "<input type=\"radio\" name=\"upnp_browser\" id=\"toggle_upnp_browser1\" value=\"1\" " . (($_SESSION['upnp_browser'] == 1) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['upnp_browser0'] .= "<input type=\"radio\" name=\"upnp_browser\" id=\"toggle_upnp_browser2\" value=\"0\" " . (($_SESSION['upnp_browser'] == 0) ? "checked=\"checked\"" : "") . ">\n";
+}
+else {
+	$_feat_djmount = 'hide';
 }
 
 // SERVICES
@@ -580,6 +616,6 @@ $tpl = "snd-config.html";
 $section = basename(__FILE__, '.php');
 storeBackLink($section, $tpl);
 
-include('/var/local/www/header.php'); 
+include('/var/local/www/header.php');
 eval("echoTemplate(\"" . getTemplate("templates/$tpl") . "\");");
 include('footer.php');

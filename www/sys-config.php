@@ -1,4 +1,4 @@
-<?php 
+<?php
 /**
  * moOde audio player (C) 2014 Tim Curtis
  * http://moodeaudio.org
@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-05-07 TC moOde 5.2
+ * 2019-10-02 TC moOde 6.3.0
  *
  */
 
@@ -29,7 +29,7 @@ require_once dirname(__FILE__) . '/inc/keyboard.php';
 
 playerSession('open', '' ,'');
 
-// SOFTWARE UPDATE AND IMAGE BUILDER DOWNLOAD
+// SOFTWARE UPDATE
 
 // check for software update
 if (isset($_POST['checkfor_update'])) {
@@ -37,29 +37,18 @@ if (isset($_POST['checkfor_update'])) {
 	$lastinstall = checkForUpd('/var/local/www/');
 
 	// up to date
-	if ($available['pkgdate'] == $lastinstall['pkgdate']) {
-	//if ($available['pkgdate'] != $lastinstall['pkgdate']) { // set to != for testing
+	if ($available['Date'] == $lastinstall['Date']) {
 		$_available_upd = 'Software is up to date<br>';
 	}
+	// update available
 	else {
-		// update available 
-		$_available_upd .= '<u><em>Available</u></em><br>';
-		$_available_upd .= $available['pkgdate'] == 'None' ? $available['pkgdate'] . '<br>' : 'Package date: ' . $available['pkgdate'] . 
-		//$_available_upd .= $available['pkgdate'] != 'None' ? $available['pkgdate'] . '<br>' : 'Package date: ' . $available['pkgdate'] .  // set to != for testing
+		$_available_upd = $available['Date'] == 'None' ? $available['Date'] . '<br>' : 'Package date: ' . $available['Date'] .
 			'<button class="btn btn-primary btn-small set-button btn-submit" id="install-update" type="submit" name="install_update" value="1">Install</button>' .
-			'<button class="btn btn-primary btn-small set-button" data-toggle="modal" href="#view-pkgcontent">View</button><br>' . 
+			'<button class="btn btn-primary btn-small set-button" data-toggle="modal" href="#view-pkgcontent">View</button><br>' .
 			'<span class="help-block-configs help-block-margin" style="margin-bottom:5px">Progress can be monitored via SSH cmd: moodeutl -t</span>'; //r45a
 
-		$_pkg_description = $available['pkgdesc'];
-		$cnt = $available['linecnt'];
-		for ($i = 1; $i <= $cnt; $i++) {
-			$_pkg_content .= '<li>' . $available[$i] . '</li>';
-		}
-
-		// last installed
-		$_lastinstall_upd .= '<u><em>Last installed</u></em><br>'; 
-		$_lastinstall_upd .= $lastinstall['pkgdate'] == 'None' ? $lastinstall['pkgdate'] : 'Package date: ' . $lastinstall['pkgdate'];
-		$_lastinstall_upd .= '<br>';
+		$_pkg_description = $available['Description'];
+		$_pkg_relnotes = $available['Relnotes'];
 	}
 }
 
@@ -67,7 +56,7 @@ if (isset($_POST['checkfor_update'])) {
 if (isset($_POST['install_update'])) {
 	if ($_POST['install_update'] == 1) {
 		$mount = sysCmd('mount | grep "moode.sqsh"');
-		$space = sysCmd("df | grep /dev/root | awk '{print $4}'");		
+		$space = sysCmd("df | grep /dev/root | awk '{print $4}'");
 		# check for invalid configs
 		if ($mount[0] != '/var/local/moode.sqsh on /var/www type squashfs (ro,relatime)' && ($_SESSION['feat_bitmask'] & FEAT_SQSHCHK)) {
 			$_SESSION['notify']['title'] = 'Invalid configuration';
@@ -87,7 +76,6 @@ if (isset($_POST['install_update'])) {
 		else {
 			submitJob('installupd', '', 'Software update installed', 'Reboot required', 60);
 			$_available_upd = 'Software is up to date<br>';
-			$_lastinstall_upd = '';
 		}
 	}
 }
@@ -99,7 +87,7 @@ if (isset($_POST['update_time_zone'])) {
 	if (isset($_POST['timezone']) && $_POST['timezone'] != $_SESSION['timezone']) {
 		submitJob('timezone', $_POST['timezone'], 'Timezone set to ' . $_POST['timezone'], '');
 		playerSession('write', 'timezone', $_POST['timezone']);
-	} 
+	}
 }
 
 // host name
@@ -121,7 +109,7 @@ if (isset($_POST['update_keyboard'])) {
     if (isset($_POST['keyboard']) && $_POST['keyboard'] != $_SESSION['keyboard']) {
         submitJob('keyboard', $_POST['keyboard'], 'Keyboard layout updated ', 'Reboot required');
         playerSession('write', 'keyboard', $_POST['keyboard']);
-    } 
+    }
 }
 
 // browser title
@@ -129,25 +117,36 @@ if (isset($_POST['update_browser_title'])) {
 	if (isset($_POST['browsertitle']) && $_POST['browsertitle'] != $_SESSION['browsertitle']) {
 		submitJob('browsertitle', '"' . $_SESSION['browsertitle'] . '" ' . '"' . $_POST['browsertitle'] . '"', 'Browser title changed', 'Refresh Browser');
 		playerSession('write', 'browsertitle', $_POST['browsertitle']);
-	} 
+	}
 }
 
 // SYSTEM MODIFICATIONS
 
-// cpu governor
+// CPU governor
 if (isset($_POST['update_cpugov'])) {
 	submitJob('cpugov', $_POST['cpugov'], 'CPU governor updated', '');
 	playerSession('write', 'cpugov', $_POST['cpugov']);
-} 
+}
 
-// integrated WiFi adapter 
+// Linux kernel
+if (isset($_POST['update_kernel_architecture'])) {
+	submitJob('kernel_architecture', $_POST['kernel_architecture'], $_POST['kernel_architecture'] . ' kernel selected', 'Reboot required');
+	playerSession('write', 'kernel_architecture', $_POST['kernel_architecture']);
+}
+
+if (isset($_POST['update_usb_auto_mounter'])) {
+	submitJob('usb_auto_mounter', $_POST['usb_auto_mounter'], 'USB auto-mounter updated', 'Reboot required');
+	playerSession('write', 'usb_auto_mounter', $_POST['usb_auto_mounter']);
+}
+
+// integrated WiFi adapter
 if (isset($_POST['p3wifi']) && $_POST['p3wifi'] != $_SESSION['p3wifi']) {
 	$title = $_POST['p3wifi'] == 1 ? 'WiFi adapter on' : 'WiFi adapter off';
 	submitJob('p3wifi', $_POST['p3wifi'], $title, 'Reboot required');
 	playerSession('write', 'p3wifi', $_POST['p3wifi']);
 }
 
-// integrated Bluetooth adapter 
+// integrated Bluetooth adapter
 if (isset($_POST['p3bt']) && $_POST['p3bt'] != $_SESSION['p3bt']) {
 	$title = $_POST['p3bt'] == 1 ? 'Bluetooth adapter on' : 'Bluetooth adapter off';
 	submitJob('p3bt', $_POST['p3bt'], $title, 'Reboot required');
@@ -181,7 +180,7 @@ if (isset($_POST['update_uac2fix'])) {
 		$title = $_POST['uac2fix'] == 1 ? 'USB(UAC2) fix on' : 'USB(UAC2) fix off';
 		submitJob('uac2fix', $_POST['uac2fix'], $title, 'Reboot required');
 		playerSession('write', 'uac2fix', $_POST['uac2fix']);
-	} 
+	}
 }
 
 // eth port fix
@@ -190,7 +189,7 @@ if (isset($_POST['update_eth_port_fix'])) {
 		$_SESSION['notify']['title'] = $_POST['eth_port_fix'] == 1 ? 'Ethernet port fix on' : 'Ethernet port fix off';
 		$_SESSION['notify']['msg'] = 'Reboot required';
 		playerSession('write', 'eth_port_fix', $_POST['eth_port_fix']);
-	} 
+	}
 }
 
 // expand root file system
@@ -203,23 +202,15 @@ if (isset($_POST['update_usbboot'])) {
 	submitJob('usbboot', '', 'USB boot enabled', 'Reboot required', 30);
 }
 
-// mpd engine timeout
-/*if (isset($_POST['update_mpdtimeout']) && $_POST['mpdtimeout'] != $_SESSION['engine_mpd_sock_timeout']) {
-	$_SESSION['notify']['title'] = 'MPD engine timeout updated';
-	$_SESSION['notify']['msg'] = 'Refresh Browse to activate';
-	$_SESSION['notify']['duration'] = 6;
-	playerSession('write', 'engine_mpd_sock_timeout', $_POST['mpdtimeout']);
-} r45b deprecate */
-
 // LOCAL DISPLAY
 
-// local UI display 
+// local UI display
 if (isset($_POST['update_localui'])) {
     if (isset($_POST['localui']) && $_POST['localui'] != $_SESSION['localui']) {
 		$title = $_POST['localui'] == 1 ? 'Local UI display on' : 'Local UI display off';
         submitJob('localui', $_POST['localui'], $title, 'Reboot may be required');
         playerSession('write', 'localui', $_POST['localui']);
-    } 
+    }
 }
 
 // touch screen capability
@@ -227,7 +218,7 @@ if (isset($_POST['update_touchscn'])) {
     if (isset($_POST['touchscn']) && $_POST['touchscn'] != $_SESSION['touchscn']) {
         submitJob('touchscn', $_POST['touchscn'], 'Setting updated', 'Local display restarted');
         playerSession('write', 'touchscn', $_POST['touchscn']);
-    } 
+    }
 }
 
 // screen blank timeout
@@ -235,14 +226,22 @@ if (isset($_POST['update_scnblank'])) {
     if (isset($_POST['scnblank']) && $_POST['scnblank'] != $_SESSION['scnblank']) {
         submitJob('scnblank', $_POST['scnblank'], 'Setting updated', 'Local display restarted');
         playerSession('write', 'scnblank', $_POST['scnblank']);
-    } 
+    }
 }
 
-// screen blank timeout
+// Screen brightness
 if (isset($_POST['update_scnbrightness'])) {
     if (isset($_POST['scnbrightness']) && $_POST['scnbrightness'] != $_SESSION['scnbrightness']) {
 		submitJob('scnbrightness', $_POST['scnbrightness'], 'Setting updated');
 		playerSession('write', 'scnbrightness', $_POST['scnbrightness']);
+    }
+}
+
+// Pixel aspect ratio
+if (isset($_POST['update_pixel_aspect_ratio'])) {
+    if (isset($_POST['pixel_aspect_ratio']) && $_POST['pixel_aspect_ratio'] != $_SESSION['pixel_aspect_ratio']) {
+		submitJob('pixel_aspect_ratio', $_POST['pixel_aspect_ratio'], 'Setting updated', 'Reboot required');
+		playerSession('write', 'pixel_aspect_ratio', $_POST['pixel_aspect_ratio']);
     }
 }
 
@@ -251,7 +250,7 @@ if (isset($_POST['update_scnrotate'])) {
     if (isset($_POST['scnrotate']) && $_POST['scnrotate'] != $_SESSION['scnrotate']) {
 		submitJob('scnrotate', $_POST['scnrotate'], 'Setting updated', 'Reboot required');
 		playerSession('write', 'scnrotate', $_POST['scnrotate']);
-    } 
+    }
 }
 
 // browser cache
@@ -270,18 +269,12 @@ if (isset($_POST['extmeta']) && $_POST['extmeta'] != $_SESSION['extmeta']) {
 
 // lcd updater
 if (isset($_POST['update_lcdup'])) {
-	if (isset($_POST['lcdupscript']) && $_POST['lcdupscript'] != $_SESSION['lcdupscript']) {
-		$_SESSION['notify']['title'] = 'Script path updated';
-		$_SESSION['notify']['duration'] = 3;
-		playerSession('write', 'lcdupscript', $_POST['lcdupscript']);
-	} 
-
 	if (isset($_POST['lcdup']) && $_POST['lcdup'] != $_SESSION['lcdup']) {
 		$title = $_POST['lcdup'] == 1 ? 'LCD update engine on' : 'LCD update engine off';
 		submitJob('lcdup', $_POST['lcdup'], $title, '');
 		playerSession('write', 'lcdup', $_POST['lcdup']);
 		playerSession('write', 'extmeta', '1'); // turn on external metadata generation
-	} 
+	}
 }
 
 // gpio
@@ -333,12 +326,34 @@ $_select['browsertitle'] = $_SESSION['browsertitle'];
 
 // SYSTEM MODIFICATIONS
 
-// cpu governor
+// CPU governor
 $_select['cpugov'] .= "<option value=\"ondemand\" " . (($_SESSION['cpugov'] == 'ondemand') ? "selected" : "") . ">On-demand</option>\n";
 $_select['cpugov'] .= "<option value=\"performance\" " . (($_SESSION['cpugov'] == 'performance') ? "selected" : "") . ">Performance</option>\n";
 
-// wifi bt 
-if (substr($_SESSION['hdwrrev'], 0, 4) == 'Pi-3' || substr($_SESSION['hdwrrev'], 0, 9) == 'Pi-Zero W') { // r44f change from Pi-3B to Pi-3 to cover 3B, 3B+ and 3A+
+// Linux kernel
+if ($_SESSION['feat_bitmask'] & FEAT_KERNEL) {
+	$_feat_kernel = '';
+	$_select['kernel_architecture'] .= "<option value=\"32-bit\" " . (($_SESSION['kernel_architecture'] == '32-bit') ? "selected" : "") . ">32-bit</option>\n";
+	$model = substr($_SESSION['hdwrrev'], 3, 1);
+	$name = $_SESSION['hdwrrev'];
+	// Pi-2B rev 1.2, Allo USBridge SIG, Pi-3B/B+/A+, Pi-4B
+	if ($name == 'Pi-2B 1GB v1.2' || $name == 'Allo USBridge SIG [Pi-CM3+ Lite 1GB v1.0]' || $model == '3' || $model == '4') {
+		$_select['kernel_architecture'] .= "<option value=\"64-bit\" " . (($_SESSION['kernel_architecture'] == '64-bit') ? "selected" : "") . ">64-bit</option>\n";
+	}
+}
+else {
+	$_feat_kernel = 'hide';
+}
+
+// USB auto-mounter
+$_select['usb_auto_mounter'] .= "<option value=\"udisks-glue\" " . (($_SESSION['usb_auto_mounter'] == 'udisks-glue') ? "selected" : "") . ">Udisks-glue (Default)</option>\n";
+$_select['usb_auto_mounter'] .= "<option value=\"devmon\" " . (($_SESSION['usb_auto_mounter'] == 'devmon') ? "selected" : "") . ">Devmon</option>\n";
+
+// WiFi BT
+$model = substr($_SESSION['hdwrrev'], 3, 1);
+$name = $_SESSION['hdwrrev'];
+// Pi-Zero W, Pi-3B/B+/A+, Pi-4B
+if ($name == 'Pi-Zero W' || $model == '3' || $model == '4') {
 	$_wifibt_hide = '';
 	$_select['p3wifi1'] .= "<input type=\"radio\" name=\"p3wifi\" id=\"togglep3wifi1\" value=\"1\" " . (($_SESSION['p3wifi'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['p3wifi0'] .= "<input type=\"radio\" name=\"p3wifi\" id=\"togglep3wifi2\" value=\"0\" " . (($_SESSION['p3wifi'] == 0) ? "checked=\"checked\"" : "") . ">\n";
@@ -357,8 +372,10 @@ $_select['hdmiport0'] .= "<input type=\"radio\" name=\"hdmiport\" id=\"togglehdm
 $_select['eth0chk1'] .= "<input type=\"radio\" name=\"eth0chk\" id=\"toggleeth0chk1\" value=\"1\" " . (($_SESSION['eth0chk'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 $_select['eth0chk0'] .= "<input type=\"radio\" name=\"eth0chk\" id=\"toggleeth0chk2\" value=\"0\" " . (($_SESSION['eth0chk'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 
-// max usb current 2x
-if (substr($_SESSION['hdwrrev'], 0, 4) != 'Pi-3' && substr($_SESSION['hdwrrev'], 0, 7) != 'Pi-Zero') { // r44f change from Pi-3B to Pi-3 to cover 3B, 3B+ and 3A+
+// Max usb current 2x (1200 mA)
+$model = substr($_SESSION['hdwrrev'], 3, 1);
+// Pi-1A/A+, Pi-1B/B+, Pi-2B
+if ($model == '1' || $model == '2') {
 	$_maxcurrent_hide = '';
 	$_select['maxusbcurrent1'] .= "<input type=\"radio\" name=\"maxusbcurrent\" id=\"togglemaxusbcurrent1\" value=\"1\" " . (($_SESSION['maxusbcurrent'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['maxusbcurrent0'] .= "<input type=\"radio\" name=\"maxusbcurrent\" id=\"togglemaxusbcurrent2\" value=\"0\" " . (($_SESSION['maxusbcurrent'] == 0) ? "checked=\"checked\"" : "") . ">\n";
@@ -372,7 +389,7 @@ $_select['uac2fix1'] .= "<input type=\"radio\" name=\"uac2fix\" id=\"toggleuac2f
 $_select['uac2fix0'] .= "<input type=\"radio\" name=\"uac2fix\" id=\"toggleuac2fix2\" value=\"0\" " . (($_SESSION['uac2fix'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 
 // eth port fix
-if (substr($_SESSION['hdwrrev'], 0, 6) == 'Pi-3B+') {
+if (substr($_SESSION['hdwrrev'], 0, 6) == 'Pi-3B+') { // 3B+ only
 	$_eth_port_fix_hide = '';
 	$_select['eth_port_fix1'] = "<input type=\"radio\" name=\"eth_port_fix\" id=\"toggle_eth_port_fix0\" value=\"1\" " . (($_SESSION['eth_port_fix'] == '1') ? "checked=\"checked\"" : "") . ">\n";
 	$_select['eth_port_fix0'] = "<input type=\"radio\" name=\"eth_port_fix\" id=\"toggle_eth_port_fix1\" value=\"0\" " . (($_SESSION['eth_port_fix'] == '0') ? "checked=\"checked\"" : "") . ">\n";
@@ -390,10 +407,12 @@ $_select['add2home0'] .= "<input type=\"radio\" name=\"add2home\" id=\"toggleadd
 $_select['expandrootfs1'] .= "<input type=\"radio\" name=\"expandrootfs\" id=\"toggleexpandrootfs1\" value=\"1\" " . ">\n";
 $_select['expandrootfs0'] .= "<input type=\"radio\" name=\"expandrootfs\" id=\"toggleexpandrootfs2\" value=\"0\" " . "checked=\"checked\"".">\n";
 $result = sysCmd("df | grep root | awk '{print $2}'");
-$_expandrootfs_msg = $result[0] > 3000000 ? 'File system has been expanded' : 'File system has not been expanded yet'; 
+$_expandrootfs_msg = $result[0] > 3500000 ? 'File system has been expanded' : 'File system has not been expanded yet';
 
-// usb boot
-if (substr($_SESSION['hdwrrev'], 0, 4) == 'Pi-3') { // r44f change from Pi-3B to Pi-3 to cover 3B, 3B+ and 3A+
+// USB boot
+$model = substr($_SESSION['hdwrrev'], 3, 1);
+// Pi-3B/B+/A+, NOTE: Pi-4B USB boot not avail as of 2019-07-13
+if ($model == '3' /*|| $model == '4'*/) {
 	$_usbboot_hide = '';
 	$_select['usbboot1'] .= "<input type=\"radio\" name=\"usbboot\" id=\"toggleusbboot1\" value=\"1\" " . ">\n";
 	$_select['usbboot0'] .= "<input type=\"radio\" name=\"usbboot\" id=\"toggleusbboot2\" value=\"0\" " . "checked=\"checked\"".">\n";
@@ -405,12 +424,6 @@ else {
 	$_usbboot_hide = 'hide';
 }
 
-// mpd engine timeout, r45b deprecate
-/*$_select['mpdtimeout'] .= "<option value=\"600000\" " . (($_SESSION['engine_mpd_sock_timeout'] == '600000') ? "selected" : "") . ">Never</option>\n";
-$_select['mpdtimeout'] .= "<option value=\"18000\" " . (($_SESSION['engine_mpd_sock_timeout'] == '18000') ? "selected" : "") . ">5 Hours</option>\n";
-$_select['mpdtimeout'] .= "<option value=\"3600\" " . (($_SESSION['engine_mpd_sock_timeout'] == '3600') ? "selected" : "") . ">1 Hour</option>\n";
-$_select['mpdtimeout'] .= "<option value=\"1800\" " . (($_SESSION['engine_mpd_sock_timeout'] == '1800') ? "selected" : "") . ">30 Mins</option>\n";*/
-
 // LOCAL DISPLAY
 
 // local UI display
@@ -418,11 +431,11 @@ if ($_SESSION['feat_bitmask'] & FEAT_LOCALUI) {
 	$_feat_localui = '';
 	$_select['localui1'] .= "<input type=\"radio\" name=\"localui\" id=\"togglelocalui1\" value=\"1\" " . (($_SESSION['localui'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['localui0'] .= "<input type=\"radio\" name=\"localui\" id=\"togglelocalui2\" value=\"0\" " . (($_SESSION['localui'] == 0) ? "checked=\"checked\"" : "") . ">\n";
-	
+
 	// touch capability
 	$_select['touchscn1'] .= "<input type=\"radio\" name=\"touchscn\" id=\"toggletouchscn1\" value=\"1\" " . (($_SESSION['touchscn'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['touchscn0'] .= "<input type=\"radio\" name=\"touchscn\" id=\"toggletouchscn2\" value=\"0\" " . (($_SESSION['touchscn'] == 0) ? "checked=\"checked\"" : "") . ">\n";
-	
+
 	// screen blank
 	$_select['scnblank'] .= "<option value=\"off\" " . (($_SESSION['scnblank'] == 'off') ? "selected" : "") . ">Never</option>\n";
 	$_select['scnblank'] .= "<option value=\"10\" " . (($_SESSION['scnblank'] == '10') ? "selected" : "") . ">10 Secs</option>\n";
@@ -436,8 +449,12 @@ if ($_SESSION['feat_bitmask'] & FEAT_LOCALUI) {
 	$_select['scnblank'] .= "<option value=\"1800\" " . (($_SESSION['scnblank'] == '1800') ? "selected" : "") . ">30 Mins</option>\n";
 	$_select['scnblank'] .= "<option value=\"3600\" " . (($_SESSION['scnblank'] == '3600') ? "selected" : "") . ">1 Hour</option>\n";
 
-	// backlight brightess
+	// Backlight brightess
 	$_select['scnbrightness'] = $_SESSION['scnbrightness'];
+
+	// Pixel aspect ratio
+	$_select['pixel_aspect_ratio'] .= "<option value=\"Default\" " . (($_SESSION['pixel_aspect_ratio'] == 'Default') ? "selected" : "") . ">Default</option>\n";
+	$_select['pixel_aspect_ratio'] .= "<option value=\"Square\" " . (($_SESSION['pixel_aspect_ratio'] == 'Square') ? "selected" : "") . ">Square</option>\n";
 
 	// screen rotate
 	$_select['scnrotate'] .= "<option value=\"0\" " . (($_SESSION['scnrotate'] == '0') ? "selected" : "") . ">0 Deg</option>\n";
@@ -456,7 +473,6 @@ $_select['extmeta0'] .= "<input type=\"radio\" name=\"extmeta\" id=\"toggleextme
 // lcd updater
 $_select['lcdup1'] .= "<input type=\"radio\" name=\"lcdup\" id=\"togglelcdup1\" value=\"1\" " . (($_SESSION['lcdup'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 $_select['lcdup0'] .= "<input type=\"radio\" name=\"lcdup\" id=\"togglelcdup2\" value=\"0\" " . (($_SESSION['lcdup'] == 0) ? "checked=\"checked\"" : "") . ">\n";
-$_select['lcdupscript'] = $_SESSION['lcdupscript'];
 
 // gpio
 if ($_SESSION['feat_bitmask'] & FEAT_GPIO) {
@@ -471,6 +487,14 @@ else {
 $_select['shellinabox1'] .= "<input type=\"radio\" name=\"shellinabox\" id=\"toggleshellinabox1\" value=\"1\" " . (($_SESSION['shellinabox'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 $_select['shellinabox0'] .= "<input type=\"radio\" name=\"shellinabox\" id=\"toggleshellinabox2\" value=\"0\" " . (($_SESSION['shellinabox'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 $_select['hostip'] = getHostIp();
+if ($_SESSION['shellinabox'] == '1') {
+	$_ssh_btn_disable = '';
+	$_ssh_link_disable = '';
+}
+else {
+	$_ssh_btn_disable = 'disabled';
+	$_ssh_link_disable = 'onclick="return false;"';
+}
 
 // MAINTENANCE
 
@@ -484,6 +508,6 @@ $tpl = "sys-config.html";
 $section = basename(__FILE__, '.php');
 storeBackLink($section, $tpl);
 
-include('/var/local/www/header.php'); 
+include('/var/local/www/header.php');
 eval("echoTemplate(\"" . getTemplate("templates/$tpl") . "\");");
 include('footer.php');

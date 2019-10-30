@@ -1,4 +1,4 @@
-<!-- 
+<!--
 /**
  * moOde audio player (C) 2014 Tim Curtis
  * http://moodeaudio.org
@@ -16,16 +16,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-05-07 TC moOde 5.2
+ * 2019-10-02 TC moOde 6.3.0
  *
  */
--->	
+-->
 
 <div>
-	<h4>Navigation</h4>
+	<h4>Music Library</h4>
 	<p>
-		The UI has two main parts: Library and Configuration. The Library has four views for selecting content including Radio, Folder, Tag and Album and a Playbar for controlling playback.  
-		Toggling between the Playbar and full screen Playback is accomplished by tapping on the cover or the bar icon. The Configuration screens are accessed via the Main Menu.
+		The library includes <i class="far fa-microphone sx"></i>Radio, <i class="far fa-list sx"></i>Folder, <i class="far fa-columns sx"></i>Tag and <i class="far fa-th sx"></i>Album views for selecting content and a Playbar for displaying song information and controlling playback.
+	</p>
+
+	<h4>Playback</h4>
+	<p>
+		Toggling between the Playbar and full screen Playback is accomplished by tapping on the album cover or the horizontal bar icon.
+	</p>
+
+	<h4>Configuration</h4>
+	<p>
+		The Configuration screens are accessed via the Main Menu.
 	</p>
 
 	<h4>Special Buttons</h4>
@@ -46,7 +55,7 @@
 			<span class="quickhelp"> Consume</span>
 			<span class="help-block">Remove the track from the Playlist after it finishes playing. Consume mode is automatically enabled when Auto-shuffle is ON.</span>
 		</li>
-		<li><i class="far fa-repeat sx"></i> 
+		<li><i class="far fa-repeat sx"></i>
 			<span class="quickhelp"> Repeat</span>
 			<span class="help-block">Repeat the Playlist or if Single is enabled then repeat the track.</span>
 		</li>
@@ -57,6 +66,10 @@
 		<li><i class="far fa-exchange-alt sx"></i>
 			<span class="quickhelp"> Last track</span>
 			<span class="help-block">Toggle between the currently playing track and the previously played track.</span>
+		</li>
+		<li><i class="far fa-filter sx"></i>
+			<span class="quickhelp"> Recently added</span>
+			<span class="help-block">Display recently added albums. The look back period can be set in Library options. The default is 1 month.</span>
 		</li>
 		<li><i class="far fa-dot-circle sx"></i>
 			<span class="quickhelp"> Random album</span>
@@ -75,7 +88,7 @@
 	<div style="margin-left:25px;">
 		<ul>
 			<li><span class="quickhelp"> Instant Play</span>
-				<span class="help-block">Tapping on the cover in Library Radio or Album views instantly plays the item by performing a Clear/Play.</span>
+				<span class="help-block">Tapping on the cover in Library Radio or Album views instantly plays the item by performing either a Clear/Play or Add/Play depending on the Instant play action setting in Library options.</span>
 			</li>
 			<li><span class="quickhelp"> Renderer Active screens</span>
 				<span class="help-block">Tapping on the title in the center of Bluetooth, Analog Input or S/PDIF Input Active will launch their respective Config screens which allow the input/output settings to be changed.</span>

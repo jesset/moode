@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# 2019-05-30 TC moOde 5.3
+# 2019-08-08 TC moOde 6.0.0
 #
 
 FPMLIMIT=40
@@ -27,15 +27,26 @@ FPMCNT=$(pgrep -c -f "php-fpm: pool www")
 MPDACTIVE=$(pgrep -c -x mpd)
 SPOTACTIVE=$(pgrep -c -x librespot)
 SQLDB=/var/local/www/db/moode-sqlite3.db
+SESSDIR=/var/local/php
+SESSFILE=$SESSDIR/sess_$(sqlite3 $SQLDB "select value from cfg_system where param='sessionid'")
 
 while true; do
-
-	# PHP
+	# PHP-FPM
 	if (( FPMCNT > FPMLIMIT )); then
 		TIMESTAMP=$(date +'%Y%m%d %H%M%S')
 		LOGMSG=" watchdog: PHP restarted (fpm child limit > "$FPMLIMIT")"
 		echo $TIMESTAMP$LOGMSG >> /var/log/moode.log
-		systemctl restart php7.0-fpm
+		systemctl restart php7.3-fpm
+	fi
+
+	# PHP session permissions
+	PERMS=$(ls -l $SESSFILE | awk '{print $1 "," $3 "," $4;}')
+	if [[ $PERMS != "-rw-rw-rw-,www-data,www-data" ]]; then
+		TIMESTAMP=$(date +'%Y%m%d %H%M%S')
+		LOGMSG=" watchdog: Session permissions (Reapplied)"
+		echo $TIMESTAMP$LOGMSG >> /var/log/moode.log
+		chown www-data:www-data $SESSFILE
+		chmod 0666 $SESSFILE
 	fi
 
 	# MPD
@@ -56,7 +67,7 @@ while true; do
 			/var/www/command/restart-renderer.php -spotify
 		fi
 	fi
-		
+
 	sleep 6
 	FPMCNT=$(pgrep -c -f "php-fpm: pool www")
 	MPDACTIVE=$(pgrep -c -x mpd)
