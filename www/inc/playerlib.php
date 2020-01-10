@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-10-02 TC moOde 6.3.0
+ * 2019-11-24 TC moOde 6.4.0
  *
  * This includes the @chris-rudmin rewrite of the GenLibrary() function
  * to support the new Library renderer /var/www/js/scripts-library.js
@@ -56,6 +56,7 @@ const FEAT_UPNPSYNC =	 0b0000010000000000; //  1024
 const FEAT_SPOTIFY =	 0b0000100000000000; //  2048
 const FEAT_GPIO =		 0b0001000000000000; //  4096
 const FEAT_DJMOUNT =	 0b0010000000000000; //  8192
+const FEAT_BLUETOOTH =	 0b0100000000000000; //  16384
 
 // Mirror for footer.php
 $FEAT_AIRPLAY =		0b0000000000000010;
@@ -302,7 +303,7 @@ function sockWrite($sock, $msg) {
 // Caching library loader
 function loadLibrary($sock) {
 	if (filesize(LIBCACHE_JSON) != 0) {
-		debugLog('loadLibrary(): Cache data returned to client');
+		debugLog('loadLibrary(): Cache data returned to client, length (' . filesize(LIBCACHE_JSON) . ')');
 		return file_get_contents(LIBCACHE_JSON);
 	}
 	else {
@@ -310,17 +311,17 @@ function loadLibrary($sock) {
 		$flat = genFlatList($sock);
 
 		if ($flat != '') {
-			debugLog('loadLibrary(): Flat list generated');
+			debugLog('loadLibrary(): Flat list generated, size (' . sizeof($flat) . ')');
 			debugLog('loadLibrary(): Generating library...');
 			// Normal or UTF8 replace
 			if ($_SESSION['library_utf8rep'] == 'No') {
-				$tagarray = genLibrary($flat);
+				$json_lib = genLibrary($flat);
 			}
 			else {
-				$tagarray = genLibraryUTF8Rep($flat);
+				$json_lib = genLibraryUTF8Rep($flat);
 			}
-			debugLog('loadLibrary(): Cache data returned to client');
-			return $tagarray;
+			debugLog('loadLibrary(): Cache data returned to client, length (' . strlen($json_lib) . ')');
+			return $json_lib;
 		}
 		else {
 			debugLog('loadLibrary(): Flat list empty');
@@ -358,11 +359,13 @@ function genFlatList($sock) {
 		$resp .= readMpdResp($sock);
 	}
 
+	//workerLog('genFlatList(): is_null($resp)= ' . (is_null($resp) === true ? 'true' : 'false') . ', substr($resp, 0, 2)= ' . substr($resp, 0, 2));
 	if (!is_null($resp) && substr($resp, 0, 2) != 'OK') {
 		$lines = explode("\n", $resp);
 		$item = 0;
 		$flat = array();
 		$linecount = count($lines);
+		//workerLog('genFlatList(): $linecount= ' . $linecount);
 
 		for ($i = 0; $i < $linecount; $i++) {
 			list($element, $value) = explode(': ', $lines[$i], 2);
@@ -379,7 +382,7 @@ function genFlatList($sock) {
 				$flat[$item][$element] = $value;
 			}
 		}
-		//workerLog(print_r($flat, true));
+		//workerLog('genFlatList(): ' . print_r($flat, true));
 		return $flat;
 	}
 	else {
@@ -400,7 +403,7 @@ function genLibrary($flat) {
 			'artist' => ($flatData['Artist'] ? $flatData['Artist'] : 'Unknown Artist'),
 			'album_artist' => $flatData['AlbumArtist'],
 			'composer' => ($flatData['Composer'] ? $flatData['Composer'] : 'Composer tag missing'),
-			'year' => $flatData['Date'],
+			'year' => substr($flatData['Date'], 0, 4),
 			'time' => $flatData['Time'],
 			'album' => ($flatData['Album'] ? $flatData['Album'] : 'Unknown Album'),
 			'genre' => ($flatData['Genre'] ? $flatData['Genre'] : 'Unknown'),
@@ -411,13 +414,62 @@ function genLibrary($flat) {
 		array_push($lib, $songData);
 	}
 
-	$json_lib = json_encode($lib);
+	$json_lib = json_encode($lib, JSON_INVALID_UTF8_SUBSTITUTE);
+	debugLog('genLibrary(): $lib, size= ' . sizeof($lib));
+	debugLog('genLibrary(): $json_lib, length= ' . strlen($json_lib));
+	debugLog('genLibrary(): json_last_error()= ' . json_last_error_msg());
+
 	if (file_put_contents(LIBCACHE_JSON, $json_lib) === false) {
 		debugLog('genLibrary: create libcache.json failed');
 	}
 	//workerLog(print_r($lib, true));
 	return $json_lib;
 }
+
+function json_error_message() {
+	switch (json_last_error()) {
+		case JSON_ERROR_NONE:
+			$error_message = 'No errors';
+			break;
+		case JSON_ERROR_DEPTH:
+			$error_message = 'Maximum stack depth exceeded';
+			break;
+		case JSON_ERROR_STATE_MISMATCH:
+			$error_message = 'Underflow or the modes mismatch';
+			break;
+		case JSON_ERROR_CTRL_CHAR:
+			$error_message = 'Unexpected control character found';
+			break;
+		case JSON_ERROR_SYNTAX:
+			$error_message = 'Syntax error, malformed JSON';
+			break;
+		case JSON_ERROR_UTF8:
+			$error_message = 'Malformed UTF-8 characters, possibly incorrectly encoded';
+			break;
+		default:
+			$error_message = 'Unknown error';
+			break;
+	}
+
+	return $error_message;
+}
+
+
+/*
+JSON_ERROR_NONE	No error has occurred
+JSON_ERROR_DEPTH	The maximum stack depth has been exceeded
+JSON_ERROR_STATE_MISMATCH	Invalid or malformed JSON
+JSON_ERROR_CTRL_CHAR	Control character error, possibly incorrectly encoded
+JSON_ERROR_SYNTAX	Syntax error
+JSON_ERROR_UTF8	Malformed UTF-8 characters, possibly incorrectly encoded	PHP 5.3.3
+
+JSON_ERROR_RECURSION	One or more recursive references in the value to be encoded	PHP 5.5.0
+JSON_ERROR_INF_OR_NAN	One or more NAN or INF values in the value to be encoded	PHP 5.5.0
+JSON_ERROR_UNSUPPORTED_TYPE	A value of a type that cannot be encoded was given	PHP 5.5.0
+JSON_ERROR_INVALID_PROPERTY_NAME	A property name that cannot be encoded was given	PHP 7.0.0
+JSON_ERROR_UTF16	Malformed UTF-16 characters, possibly incorrectly encoded	PHP 7.0.0
+*/
+
 // Many Chinese songs and song directories have characters that are not UTF8 causing json_encode to fail which leaves the
 // libcache.json file empty. Replacing the non-UTF8 chars in the array before json_encode solves this problem (@lazybat).
 function genLibraryUTF8Rep($flat) {
@@ -433,7 +485,7 @@ function genLibraryUTF8Rep($flat) {
 			'artist' => utf8rep(($flatData['Artist'] ? $flatData['Artist'] : 'Unknown Artist')), //r44f add inner brackets
 			'album_artist' => utf8rep($flatData['AlbumArtist']),
 			'composer' => utf8rep(($flatData['Composer'] ? $flatData['Composer'] : 'Composer tag missing')),
-			'year' => utf8rep($flatData['Date']),
+			'year' => utf8rep(substr($flatData['Date'], 0, 4)),
 			'time' => utf8rep($flatData['Time']),
 			'album' => utf8rep(($flatData['Album'] ? $flatData['Album'] : 'Unknown Album')),
 			'genre' => utf8rep(($flatData['Genre'] ? $flatData['Genre'] : 'Unknown')),
@@ -1467,7 +1519,7 @@ function updMpdConf($i2sdevice) {
 
 	foreach ($mpdcfg as $cfg) {
 		switch ($cfg['param']) {
-			// code block or other params
+			// Code block or other params
 			case 'metadata_to_use':
 				$data .= $mpdver == '0.20' ? '' : $cfg['param'] . " \"" . $cfg['value'] . "\"\n";
 				break;
@@ -1493,7 +1545,6 @@ function updMpdConf($i2sdevice) {
 				$sox_multithreading = $cfg['value'];
 				break;
 			case 'replay_gain_handler':
-				//$replay_gain_handler = $mpdver == '0.21' ? '' : $cfg['param'] . " \"" . $cfg['value'] . "\"\n";
 				$replay_gain_handler = $cfg['value'];
 				break;
 			case 'buffer_before_play':
@@ -1514,7 +1565,7 @@ function updMpdConf($i2sdevice) {
 			case 'period_time':
 				$period_time = $cfg['value'];
 				break;
-			// default param handling
+			// Default param handling
 			default:
 				$data .= $cfg['param'] . " \"" . $cfg['value'] . "\"\n";
 				if ($cfg['param'] == 'replaygain') {$replaygain = $cfg['value'];}
@@ -1522,7 +1573,7 @@ function updMpdConf($i2sdevice) {
 		}
 	}
 
-	// input
+	// Input
 	$data .= "max_connections \"128\"\n";
 	$data .= "\n";
 	$data .= "decoder {\n";
@@ -1533,14 +1584,14 @@ function updMpdConf($i2sdevice) {
 	$data .= "plugin \"curl\"\n";
 	$data .= "}\n\n";
 
-	// resampler
+	// Resampler
 	$data .= "resampler {\n";
 	$data .= "plugin \"soxr\"\n";
 	$data .= "quality \"" . $samplerate_converter . "\"\n";
 	$data .= "threads \"" . $sox_multithreading . "\"\n";
 	$data .= "}\n\n";
 
-	// alsa local outputs
+	// ALSA local (outputs 1 - 5)
 	$names = array (
 		"name \"ALSA default\"\n" . "device \"hw:" . $device . ",0\"\n",
 		"name \"ALSA crossfeed\"\n" . "device \"crossfeed\"\n",
@@ -1555,34 +1606,18 @@ function updMpdConf($i2sdevice) {
 		$data .= "mixer_type \"" . $mixertype . "\"\n";
 		$data .= $mixertype == 'hardware' ? "mixer_control \"" . $hwmixer . "\"\n" . "mixer_device \"hw:" . $device . "\"\n" . "mixer_index \"0\"\n" : '';
 		$data .= "dop \"" . $dop . "\"\n";
-		/* DEPRECATE because when hardware volume is present and replay_gain_handler = 'mixer', 0dB ALSA volume is output when track starts playing. Instead use MPD internal default (software).
-		$data .= $replaygain != 'off' ? "replay_gain_handler \"" . $replay_gain_handler . "\"\n" : '';*/
-		/* DEPRECATE because the explicit settings cause distortion on HDMI and On-board audio outputs. Instead use MPD internal defaults.
-		$data .= "auto_resample \"" . $auto_resample . "\"\n";
-		$data .= "auto_channels \"" . $auto_channels . "\"\n";
-		$data .= "auto_format \"" . $auto_format . "\"\n";
-		$data .= "buffer_time \"" . $buffer_time . "\"\n";
-		$data .= "period_time \"" . $period_time . "\"\n";*/
 		$data .= "}\n\n";
 	}
 
-	// alsa bluetooth output
+	// ALSA bluetooth (output 6)
 	$data .= "audio_output {\n";
 	$data .= "type \"alsa\"\n";
 	$data .= "name \"ALSA bluetooth\"\n";
 	$data .= "device \"btstream\"\n";
 	$data .= "mixer_type \"software\"\n";
-	/* DEPRECATE
-	$data .= $replaygain != 'off' ? "replay_gain_handler \"software\"\n" : '';*/
-	/* DEPRECATE
-	$data .= "auto_resample \"" . $auto_resample . "\"\n";
-	$data .= "auto_channels \"" . $auto_channels . "\"\n";
-	$data .= "auto_format \"" . $auto_format . "\"\n";
-	$data .= "buffer_time \"" . $buffer_time . "\"\n";
-	$data .= "period_time \"" . $period_time . "\"\n";*/
 	$data .= "}\n\n";
 
-	// mpd httpd
+	// MPD httpd (output 7)
 	$data .= "audio_output {\n";
 	$data .= "type \"httpd\"\n";
 	$data .= "name \"HTTP stream\"\n";
@@ -1591,13 +1626,24 @@ function updMpdConf($i2sdevice) {
 	$data .= $_SESSION['mpd_httpd_encoder'] == 'flac' ? "compression \"0\"\n" : "bitrate \"320\"\n";
 	$data .= "tags \"yes\"\n";
 	$data .= "always_on \"yes\"\n";
+	$data .= "}\n\n";
+
+	// TRX multiroom (output 8)
+	$data .= "audio_output {\n";
+	$data .= "type \"alsa\"\n";
+	$data .= "name \"TRX multiroom\"\n";
+	$data .= "device \"multiroom\"\n";
+	$data .= "mixer_type \"" . $mixertype . "\"\n";
+	$data .= $mixertype == 'hardware' ? "mixer_control \"" . $hwmixer . "\"\n" . "mixer_device \"hw:" . $device . "\"\n" . "mixer_index \"0\"\n" : '';
+	$data .= "dop \"" . $dop . "\"\n";
+	$data .= "#allowed_formats \"48000:16:2\"\n";
 	$data .= "}\n";
 
 	$fh = fopen('/etc/mpd.conf', 'w');
 	fwrite($fh, $data);
 	fclose($fh);
 
-	// update confs with device num (cardnum)
+	// Update confs with device num (cardnum)
 	sysCmd("sed -i '/slave.pcm \"plughw/c\ \tslave.pcm \"plughw:" . $device . ",0\";' " . ALSA_PLUGIN_PATH . '/crossfeed.conf');
 	sysCmd("sed -i '/slave.pcm \"plughw/c\ \tslave.pcm \"plughw:" . $device . ",0\";' " . ALSA_PLUGIN_PATH . '/eqfa4p.conf');
 	sysCmd("sed -i '/slave.pcm \"plughw/c\ \tslave.pcm \"plughw:" . $device . ",0\";' " . ALSA_PLUGIN_PATH . '/alsaequal.conf');
@@ -1605,7 +1651,7 @@ function updMpdConf($i2sdevice) {
 	sysCmd("sed -i '/card/c\ \t    card " . $device . "' " . ALSA_PLUGIN_PATH . '/20-bluealsa-dmix.conf');
 	sysCmd("sed -i '/AUDIODEV/c\AUDIODEV=plughw:" . $device . ",0' /etc/bluealsaaplay.conf");
 
-	// store device name for Audio info popup
+	// Store device name for Audio info popup
 	if ($_SESSION['i2sdevice'] != 'none') {
 		$adevname = $_SESSION['i2sdevice'];
 	}
@@ -1618,7 +1664,7 @@ function updMpdConf($i2sdevice) {
 	playerSession('write', 'adevname', $adevname);
 }
 
-// return amixer name
+// Return amixer name
 function getMixerName($i2sdevice) {
 	// USB and On-board: default is PCM otherwise use returned mixer name
 	if ($i2sdevice == 'none') {
@@ -1641,14 +1687,14 @@ function getMixerName($i2sdevice) {
 	return $mixername;
 }
 
-// make text for audio device field (mpd and sqe-config)
+// Make text for audio device field (mpd and sqe-config)
 function getDeviceNames () {
 	$dev = array();
 
 	$card0 = file_get_contents('/proc/asound/card0/id');
 	$card1 = file_get_contents('/proc/asound/card1/id');
 
-	// device 0
+	// Device 0
 	if ($card0 == "ALSA\n") {
 		$dev[0] = 'On-board audio device';
 	}
@@ -1659,7 +1705,7 @@ function getDeviceNames () {
 		$dev[0] = '';
 	}
 
-	// device 1
+	// Device 1
 	if ($card1 != '' && $card0 == "ALSA\n") {
 		$dev[1] = 'USB audio device';
 	}
@@ -2513,8 +2559,7 @@ function autoConfig($cfgfile) {
 	autoCfgLog('autocfg: - Network (wlan0)');
 	//
 
-	$array = explode('=', sysCmd('wpa_passphrase "' . $autocfg['wlanssid'] . '" "' . $autocfg['wlanpwd'] . '"')[3]);
-	$psk = $array[1];
+	$psk = genWpaPSK($autocfg['wlanssid'], $autocfg['wlanpwd']);
 	$netcfg = sdbquery('select * from cfg_network', $dbh);
 	$value = array('method' => $netcfg[1]['method'], 'ipaddr' => $netcfg[1]['ipaddr'], 'netmask' => $netcfg[1]['netmask'],
 		'gateway' => $netcfg[1]['gateway'], 'pridns' => $netcfg[1]['pridns'], 'secdns' => $netcfg[1]['secdns'],
@@ -2533,8 +2578,7 @@ function autoConfig($cfgfile) {
 	autoCfgLog('autocfg: - Network (apd0)');
 	//
 
-	$array = explode('=', sysCmd('wpa_passphrase "' . $autocfg['apdssid'] . '" "' . $autocfg['apdpwd'] . '"')[3]);
-	$psk = $array[1];
+	$psk = genWpaPSK($autocfg['apdssid'], $autocfg['apdpwd']);
 	$value = array('method' => '', 'ipaddr' => '', 'netmask' => '', 'gateway' => '', 'pridns' => '', 'secdns' => '',
 		'wlanssid' => $autocfg['apdssid'], 'wlansec' => '', 'wlanpwd' => $psk, 'wlan_psk' => $psk,
 		'wlan_country' => '', 'wlan_channel' => $autocfg['apdchan']);
@@ -2574,6 +2618,19 @@ function autoConfig($cfgfile) {
 	sysCmd('rm ' . $cfgfile);
 	autoCfgLog('autocfg: Configuration file deleted');
 	autoCfgLog('autocfg: Auto-configure complete');
+}
+
+function genWpaPSK($ssid, $passphrase) {
+	$fh = fopen('/tmp/passphrase', 'w');
+	fwrite($fh, $passphrase . "\n");
+	fclose($fh);
+
+	$result = sysCmd('wpa_passphrase "' . $ssid . '" < /tmp/passphrase');
+	sysCmd('rm /tmp/passphrase');
+	//workerLog(print_r($result, true));
+
+	$psk = explode('=', $result[4]);
+	return $psk[1];
 }
 
 // Check for available software update (ex: update-rNNN.txt)
@@ -2839,15 +2896,15 @@ function setMpdHttpd () {
 	//workerLog('$result=(' . $result[0]);
 }
 
-// reconfigure MPD volume
+// Reconfigure MPD volume
 function reconfMpdVolume($mixertype) {
 	cfgdb_update('cfg_mpd', cfgdb_connect(), 'mixer_type', $mixertype);
 	playerSession('write', 'mpdmixer', $mixertype);
-	// reset hardware volume to 0dB (100) if indicated
+	// Reset hardware volume to 0dB if indicated
 	if (($mixertype == 'software' || $mixertype == 'disabled') && $_SESSION['alsavolume'] != 'none') {
-		sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '"' . ' 100');
+		sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '" ' . $_SESSION['alsavolume_max']);
 	}
-	// update /etc/mpd.conf
+	// Update /etc/mpd.conf
 	updMpdConf($_SESSION['i2sdevice']);
 }
 

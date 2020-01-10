@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-08-08 TC moOde 6.0.0
+ * 2019-11-24 TC moOde 6.4.0
  *
  */
 
@@ -26,15 +26,18 @@ playerSession('open', '' ,'');
 
 // DEVICE
 
-// i2s device
+// I2S device
 if (isset($_POST['update_i2s_device'])) {
 	if (isset($_POST['i2sdevice'])) {
 		playerSession('write', 'i2sdevice', $_POST['i2sdevice']);
-		submitJob('i2sdevice', $_POST['i2sdevice'], 'I2S audio device updated', '- Edit Driver options<br>- Reboot then edit Chip options', 20);
+		$title = 'I2S audio device updated';
+		$msg = '<b>Reboot required</b><br>After rebooting:<br>- Edit MPD Config and SAVE<br>- Edit chip options<br>- Edit driver options';
+
+		submitJob('i2sdevice', $_POST['i2sdevice'], $title, $msg, 30);
 	}
 }
 
-// advanced driver options
+// Advanced driver options
 if (isset($_POST['update_drvoptions'])) {
 	if (isset($_POST['drvoptions']) && $_POST['drvoptions'] != 'none') {
 		$result = sdbquery("SELECT driver, drvoptions FROM cfg_audiodev WHERE name='" . $_SESSION['i2sdevice'] . "'", cfgdb_connect());
@@ -46,18 +49,18 @@ if (isset($_POST['update_drvoptions'])) {
 	}
 }
 
-// alsa volume
-if (isset($_POST['update_alsa_volume'])) {
-	if (isset($_POST['alsavolume'])) {
-		submitJob('alsavolume', $_POST['alsavolume'], 'ALSA volume updated', '');
-		playerSession('write', 'alsavolume', $_POST['alsavolume']);
+// Max ALSA volume
+if (isset($_POST['update_alsavolume_max'])) {
+	if (isset($_POST['alsavolume_max'])) {
+		submitJob('alsavolume_max', $_POST['alsavolume_max'], 'Max ALSA volume updated', '');
+		playerSession('write', 'alsavolume_max', $_POST['alsavolume_max']);
 	}
 }
 
 // MPD
 
 // mpd version
-if (isset($_POST['update_mpdver'])) {
+if (isset($_POST['update_mpdver']) && $_POST['mpdver'] != $_SESSION['mpdver']) {
 	playerSession('write', 'mpdver', $_POST['mpdver']);
 	submitJob('mpdver', $_POST['mpdver'], 'MPD ' . $_POST['mpdver'] . ' installed', 'Database rebuild started...');
 }
@@ -87,10 +90,9 @@ if (isset($_POST['ashufflesvc']) && $_POST['ashufflesvc'] != $_SESSION['ashuffle
 	}
 }
 
-// autoplay last played item after reboot/powerup
+// Autoplay last played item after reboot/powerup
 if (isset($_POST['autoplay']) && $_POST['autoplay'] != $_SESSION['autoplay']) {
 	$_SESSION['notify']['title'] = $_POST['autoplay'] == 1 ? 'Autoplay on' : 'Autoplay off';
-	$_SESSION['notify']['duration'] = 3;
 	playerSession('write', 'autoplay', $_POST['autoplay']);
 }
 
@@ -403,31 +405,25 @@ else {
 $_chip_btn_disable = !empty($result[0]['chipoptions']) ? '' : 'disabled';
 $_chip_link_disable = !empty($result[0]['chipoptions']) ? '' : 'onclick="return false;"';
 
-// alsa volume
+// Max ALSA volume
 if ($_SESSION['alsavolume'] == 'none') {
-	$_alsa_volume = '';
-	$_alsa_volume_readonly = 'readonly';
-	$_alsa_volume_hide = 'hide';
-	$_alsa_volume_msg = "<span class=\"help-block-configs help-block-margin\">Hardware volume controller not detected</span>";
+	$_alsavolume_max = '';
+	$_alsavolume_max_readonly = 'readonly';
+	$_alsavolume_hide = 'hide'; // Hides the SET button
+	$_alsavolume_msg = "<span class=\"help-block-configs help-block-margin\">Hardware volume controller not detected</span>";
 }
 else {
-	$mixername = getMixerName($_SESSION['i2sdevice']);
-	// TC there is a visudo config that allows this cmd to be run by www-data, the user context for this page
-	$result = sysCmd("/var/www/command/util.sh get-alsavol " . '"' . $mixername . '"');
-	$_alsa_volume = str_replace('%', '', $result[0]);
-	if (isset($_POST['alsavolume']) && $_alsa_volume != $_POST['alsavolume']) { // worker has not processed the change yet
-		$_alsa_volume = $_POST['alsavolume'];
-	}
-	$_alsa_volume_readonly = '';
-	$_alsa_volume_hide = '';
-	$_alsa_volume_msg = '';
+	$_alsavolume_max = $_SESSION['alsavolume_max'];
+	$_alsavolume_max_readonly = '';
+	$_alsavolume_max_hide = '';
+	$_alsavolume_max_msg = '';
 }
 
 // MPD
 
-// mpd version
-$_select['mpdver'] .= "<option value=\"0.20.23\" " . (($_SESSION['mpdver'] == '0.20.23') ? "selected" : "") . ">0.20.23 (Default)</option>\n";
-$_select['mpdver'] .= "<option value=\"0.21.15\" " . (($_SESSION['mpdver'] == '0.21.15') ? "selected" : "") . ">0.21.15 (Testing)</option>\n";
+// MPD version
+//$_select['mpdver'] .= "<option value=\"0.20.23\" " . (($_SESSION['mpdver'] == '0.20.23') ? "selected" : "") . ">0.20.23 (Default)</option>\n";
+$_select['mpdver'] .= "<option value=\"0.21.16\" " . (($_SESSION['mpdver'] == '0.21.16') ? "selected" : "") . ">0.21.16 (Default)</option>\n";
 
 // auto-shuffle
 $_select['ashufflesvc1'] .= "<input type=\"radio\" name=\"ashufflesvc\" id=\"toggleashufflesvc1\" value=\"1\" " . (($_SESSION['ashufflesvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
@@ -498,18 +494,24 @@ foreach ($curveList as $curve) {
 
 // RENDERERS
 
-// bluetooth
-$_SESSION['btsvc'] == '1' ? $_bt_btn_disable = '' : $_bt_btn_disable = 'disabled';
-$_SESSION['btsvc'] == '1' ? $_bt_link_disable = '' : $_bt_link_disable = 'onclick="return false;"';
-$_select['btsvc1'] .= "<input type=\"radio\" name=\"btsvc\" id=\"togglebtsvc1\" value=\"1\" " . (($_SESSION['btsvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
-$_select['btsvc0'] .= "<input type=\"radio\" name=\"btsvc\" id=\"togglebtsvc2\" value=\"0\" " . (($_SESSION['btsvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
-$_select['btname'] = $_SESSION['btname'];
-$_select['pairing_agent1'] .= "<input type=\"radio\" name=\"pairing_agent\" id=\"toggle-pairing-agent1\" value=\"1\" " . (($_SESSION['pairing_agent'] == 1) ? "checked=\"checked\"" : "") . ">\n";
-$_select['pairing_agent0'] .= "<input type=\"radio\" name=\"pairing_agent\" id=\"toggle-pairing-agent2\" value=\"0\" " . (($_SESSION['pairing_agent'] == 0) ? "checked=\"checked\"" : "") . ">\n";
-$_select['btmulti1'] .= "<input type=\"radio\" name=\"btmulti\" id=\"togglebtmulti1\" value=\"1\" " . (($_SESSION['btmulti'] == 1) ? "checked=\"checked\"" : "") . ">\n";
-$_select['btmulti0'] .= "<input type=\"radio\" name=\"btmulti\" id=\"togglebtmulti2\" value=\"0\" " . (($_SESSION['btmulti'] == 0) ? "checked=\"checked\"" : "") . ">\n";
-$_select['rsmafterbt'] .= "<option value=\"1\" " . (($_SESSION['rsmafterbt'] == '1') ? "selected" : "") . ">Yes</option>\n";
-$_select['rsmafterbt'] .= "<option value=\"0\" " . (($_SESSION['rsmafterbt'] == '0') ? "selected" : "") . ">No</option>\n";
+// Bluetooth
+if ($_SESSION['feat_bitmask'] & FEAT_BLUETOOTH) {
+	$_feat_bluetooth = '';
+	$_SESSION['btsvc'] == '1' ? $_bt_btn_disable = '' : $_bt_btn_disable = 'disabled';
+	$_SESSION['btsvc'] == '1' ? $_bt_link_disable = '' : $_bt_link_disable = 'onclick="return false;"';
+	$_select['btsvc1'] .= "<input type=\"radio\" name=\"btsvc\" id=\"togglebtsvc1\" value=\"1\" " . (($_SESSION['btsvc'] == 1) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['btsvc0'] .= "<input type=\"radio\" name=\"btsvc\" id=\"togglebtsvc2\" value=\"0\" " . (($_SESSION['btsvc'] == 0) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['btname'] = $_SESSION['btname'];
+	$_select['pairing_agent1'] .= "<input type=\"radio\" name=\"pairing_agent\" id=\"toggle-pairing-agent1\" value=\"1\" " . (($_SESSION['pairing_agent'] == 1) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['pairing_agent0'] .= "<input type=\"radio\" name=\"pairing_agent\" id=\"toggle-pairing-agent2\" value=\"0\" " . (($_SESSION['pairing_agent'] == 0) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['btmulti1'] .= "<input type=\"radio\" name=\"btmulti\" id=\"togglebtmulti1\" value=\"1\" " . (($_SESSION['btmulti'] == 1) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['btmulti0'] .= "<input type=\"radio\" name=\"btmulti\" id=\"togglebtmulti2\" value=\"0\" " . (($_SESSION['btmulti'] == 0) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['rsmafterbt'] .= "<option value=\"1\" " . (($_SESSION['rsmafterbt'] == '1') ? "selected" : "") . ">Yes</option>\n";
+	$_select['rsmafterbt'] .= "<option value=\"0\" " . (($_SESSION['rsmafterbt'] == '0') ? "selected" : "") . ">No</option>\n";
+}
+else {
+	$_feat_bluetooth = 'hide';
+}
 
 // airplay
 if ($_SESSION['feat_bitmask'] & FEAT_AIRPLAY) {

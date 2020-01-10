@@ -20,7 +20,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-10-02 TC moOde 6.3.0
+ * 2019-11-24 TC moOde 6.4.0
  *
  */
 
@@ -100,8 +100,17 @@ foreach ($result as $row) {
 workerLog('worker: Session loaded');
 workerLog('worker: Debug logging (' . ($_SESSION['debuglog'] == '1' ? 'on' : 'off') . ')');
 
+// Verify device configuration
+$card0 = trim(file_get_contents('/proc/asound/card0/id'));
+$card1 = trim(file_get_contents('/proc/asound/card1/id'));
+$result = sdbquery("SELECT value FROM cfg_mpd WHERE param='device'", $dbh);
+workerLog('worker: Device raw: Card0 (' . $card0 . ') | Card1 (' . $card1 . ') | I2Sdev (' . $_SESSION['i2sdevice'] . ')');
+workerLog('worker: Device cfg: Name (' . $_SESSION['adevname'] . ') | Card (' . $_SESSION['cardnum'] . ') | MPDdev (' . $result[0]['value'] . ') | Mixer (' . $_SESSION['amixname'] . ') | Alsavol: (' . $_SESSION['alsavolume'] . ')');
+if ($_SESSION['i2sdevice'] != 'none' && $_SESSION['cardnum'] != '0') {
+	workerLog('worker: ERROR: Device raw/cfg card mismatch');
+}
+
 // Zero out ALSA volume
-//workerLog('worker: Device: (' . $_SESSION['adevname'] . '), Cardnum: (' . $_SESSION['cardnum'] . '), Mixer: (' . $_SESSION['amixname'] . '), Alsavolume: (' . $_SESSION['alsavolume'] . ')');
 if ($_SESSION['alsavolume'] != 'none') {
 	$amixname = getMixerName($_SESSION['i2sdevice']);
 	sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $amixname . '"' . ' 0');
@@ -207,8 +216,7 @@ else {
 	$eth0ip = '';
 	workerLog('worker: eth0 does not exist');
 }
-$logmsg = !empty($eth0ip[0]) ? 'eth0 (' . $eth0ip[0] . ')' : 'eth0 address not assigned';
-workerLog('worker: ' . $logmsg);
+!empty($eth0ip[0]) ? log_network_info('eth0') : workerLog('worker: eth0 address not assigned');
 
 // Check WLAN0
 $wlan0ip = '';
@@ -263,9 +271,7 @@ if (!empty($wlan0[0])) {
 			}
 		}
 	}
-
-	$logmsg = !empty($wlan0ip[0]) ? 'wlan0 (' . $wlan0ip[0] . ')' : ($_SESSION['apactivated'] == true ? 'wlan0 unable to start AP mode' : 'wlan0 address not assigned');
-	workerLog('worker: ' . $logmsg);
+	!empty($wlan0ip[0]) ? log_network_info('wlan0') : ($_SESSION['apactivated'] == true ? workerLog('worker: wlan0 unable to start AP mode') : workerLog('worker: wlan0 address not assigned'));
 
 	// Reset dhcpcd.conf in case a hard reboot or poweroff occurs
 	resetApMode();
@@ -304,7 +310,7 @@ else {
 	workerLog('worker: ALSA outputs unmuted');
 }
 
-// Log device info
+// Log audio device info
 $logmsg = 'worker: ';
 workerLog($logmsg . 'ALSA card number (' . $_SESSION['cardnum'] . ')');
 if ($_SESSION['i2sdevice'] == 'none') {
@@ -320,7 +326,7 @@ foreach($formats as $format) {
 	$audio_formats .= $format . ', ';
 }
 $_SESSION['audio_formats'] = !empty($audio_formats) ? substr($audio_formats, 0, -2) : 'Audio device busy';
-workerLog('worker: Supported audio formats (' . $_SESSION['audio_formats'] . ')');
+workerLog('worker: Audio formats (' . $_SESSION['audio_formats'] . ')');
 
 // Store alsa mixer name for use by util.sh get/set-alsavol and vol.sh
 playerSession('write', 'amixname', getMixerName($_SESSION['i2sdevice']));
@@ -337,6 +343,7 @@ else {
 	$result[0] = str_replace('%', '', $result[0]);
 	playerSession('write', 'alsavolume', $result[0]); // volume level
 	workerLog('worker: Hdwr volume controller exists');
+	workerLog('worker: Max ALSA volume (' . $_SESSION['alsavolume_max'] . '%)');
 }
 
 // Configure Allo Piano 2.1
@@ -500,6 +507,22 @@ else {
 	workerLog('worker: GPIO button handler (feat N/A)');
 }
 
+if ($_SESSION['feat_bitmask'] & FEAT_BLUETOOTH) {
+	// Start bluetooth controller
+	if (isset($_SESSION['btsvc']) && $_SESSION['btsvc'] == 1) {
+		workerLog('worker: Bluetooth controller started');
+		startBt();
+	}
+	// Start bluetooth pairing agent
+	if (isset($_SESSION['pairing_agent']) && $_SESSION['pairing_agent'] == 1) {
+		workerLog('worker: Bluetooth pairing agent started');
+		sysCmd('/var/www/command/bt-agent.py --agent --disable_pair_mode_switch --pair_mode --wait_for_bluez >/dev/null 2>&1 &');
+	}
+}
+else {
+	workerLog('worker: Bluetooth (feat N/A)');
+}
+
 // END FEATURES AVAILABILITY
 
 // Start rotary encoder
@@ -518,18 +541,6 @@ if (isset($_SESSION['lcdup']) && $_SESSION['lcdup'] == 1) {
 if (isset($_SESSION['shellinabox']) && $_SESSION['shellinabox'] == 1) {
 	sysCmd('systemctl start shellinabox');
 	workerLog('worker: Shellinabox SSH started');
-}
-
-// Start bluetooth controller
-if (isset($_SESSION['btsvc']) && $_SESSION['btsvc'] == 1) {
-	workerLog('worker: Bluetooth controller started');
-	startBt();
-}
-
-// Start bluetooth pairing agent
-if (isset($_SESSION['pairing_agent']) && $_SESSION['pairing_agent'] == 1) {
-	workerLog('worker: Bluetooth pairing agent started');
-	sysCmd('/var/www/command/bt-agent.py --agent --disable_pair_mode_switch --pair_mode --wait_for_bluez >/dev/null 2>&1 &');
 }
 
 // USB auto-mounter
@@ -561,7 +572,7 @@ workerLog('worker: -- Miscellaneous');
 // Since we initially set alsa volume to 0 at the beginning of startup it must be reset
 if ($_SESSION['alsavolume'] != 'none') {
 	if ($_SESSION['mpdmixer'] == 'software' || $_SESSION['mpdmixer'] == 'disabled') {
-		$result = sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '"' . ' 100');
+		$result = sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '" ' . $_SESSION['alsavolume_max']);
 	}
 }
 
@@ -765,7 +776,7 @@ function chkBtActive() {
 			playerSession('write', 'btactive', '1');
 			$GLOBALS['scnsaver_timeout'] = $_SESSION['scnsaver_timeout']; // reset timeout
 			if ($_SESSION['alsavolume'] != 'none') {
-				sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '"' . ' 100');
+				sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '" ' . $_SESSION['alsavolume_max']);
 			}
 		}
 		sendEngCmd('btactive1'); // Placing here enables each conected device to be printed to the indicator overlay
@@ -1152,6 +1163,15 @@ function chkMpdDbUpdate() {
 	}
 }
 
+// Log info for the active interface (eth0 or wlan0)
+function log_network_info($interface) {
+	workerLog('worker: IP addr (' . sysCmd("ifconfig " . $interface . " | awk 'NR==2{print $2}'")[0] . ')');
+	workerLog('worker: Netmask (' . sysCmd("ifconfig " . $interface . " | awk 'NR==2{print $4}'")[0] . ')');
+	workerLog('worker: Gateway (' . sysCmd("netstat -nr | awk 'NR==3 {print $2}'")[0] . ')');
+	workerLog('worker: Pri DNS (' . sysCmd("cat /etc/resolv.conf | awk 'NR==3 {print $2}'")[0] . ')');
+	workerLog('worker: Domain  (' . sysCmd("cat /etc/resolv.conf | awk 'NR==2 {print $2}'")[0] . ')');
+}
+
 //
 // PROCESS SUBMITTED JOBS
 //
@@ -1217,7 +1237,7 @@ function runQueuedJob() {
 
 			// Reset hardware volume to 0dB (100) if indicated
 			if (($_SESSION['mpdmixer'] == 'software' || $_SESSION['mpdmixer'] == 'disabled') && $_SESSION['alsavolume'] != 'none') {
-				sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '"' . ' 100');
+				sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '" ' . $_SESSION['alsavolume_max']);
 			}
 
 			// Restart mpd and pick up conf changes
@@ -1253,9 +1273,10 @@ function runQueuedJob() {
 			playerSession('write', 'autoplay', '0'); // to prevent play before MPD setting applied
 			cfgI2sOverlay($_SESSION['w_queueargs']);
 			break;
-		case 'alsavolume':
-			$mixername = getMixerName($_SESSION['i2sdevice']);
-			sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $mixername  . '"' . ' ' . $_SESSION['w_queueargs']);
+		case 'alsavolume_max':
+			if (($_SESSION['mpdmixer'] == 'software' || $_SESSION['mpdmixer'] == 'disabled') && $_SESSION['alsavolume'] != 'none') {
+				sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '" ' . $_SESSION['w_queueargs']);
+			}
 			break;
 		case 'rotaryenc':
 			sysCmd('systemctl stop rotenc');
@@ -1405,7 +1426,7 @@ function runQueuedJob() {
 			if ($_SESSION['slsvc'] == '1') {
 				sysCmd('mpc stop');
 				if ($_SESSION['alsavolume'] != 'none') {
-					sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '"' . ' 100');
+					sysCmd('/var/www/command/util.sh set-alsavol ' . '"' . $_SESSION['amixname']  . '" ' . $_SESSION['alsavolume_max']);
 				}
 				cfgSqueezelite();
 				startSqueezeLite();

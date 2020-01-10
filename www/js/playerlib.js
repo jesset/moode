@@ -37,6 +37,7 @@ const FEAT_UPNPSYNC =    0b0000010000000000; //  1024
 const FEAT_SPOTIFY =     0b0000100000000000; //  2048
 const FEAT_GPIO =		 0b0001000000000000; //  4096
 const FEAT_DJMOUNT =	 0b0010000000000000; //  8192
+const FEAT_BLUETOOTH =   0b0100000000000000; //  16384
 
 var UI = {
     knob: null,
@@ -1399,36 +1400,32 @@ function watchCountdown(period) {
 	// period[4] (hours) > 0 reduce font-size so time fits nicely within knob
 	//console.log('period ' + period[4]);
 
-	// default
+	// Default
 	if ($(window).height() > 479) {
+        $('#countdown-display').css('margin-top','-.5em');
+
 		if (period[4] == 0) {
-			$('#countdown-display').css('font-size', '1.9em');
-			$('#countdown-display').css('margin-top', '-.5em');
+            $('#countdown-display').css('font-size','1.9em');
 		}
 		else if (period[4] < 10) {
-			$('#countdown-display').css('font-size', '1.8em');
-			$('#countdown-display').css('margin-top', '-.5em');
-			$('#countdown-display').css('left', '51%');
+            $('#countdown-display').css('font-size','1.8em');
 		}
 		else {
-			$('#countdown-display').css('font-size', '1.6em');
-			$('#countdown-display').css('margin-top', '-.5em');
+            $('#countdown-display').css('font-size','1.6em');
 		}
 	}
-	// pi touch 799 x 479
+	// Pi 7" touch 799 x 479
 	else {
+        $('#countdown-display').css('margin-top','-1em');
+
 		if (period[4] == 0) {
-			$('#countdown-display').css('font-size', '1.8em');
-			$('#countdown-display').css('margin-top', '-1em');
+            $('#countdown-display').css('font-size','1.7em');
 		}
 		else if (period[4] < 10) {
-			$('#countdown-display').css('font-size', '1.6em');
-			$('#countdown-display').css('margin-top', '-1em');
-			$('#countdown-display').css('left', '51%');
+            $('#countdown-display').css('font-size','1.6em');
 		}
 		else {
-			$('#countdown-display').css('font-size', '1.5em');
-			$('#countdown-display').css('margin-top', '-1em');
+            $('#countdown-display').css('font-size','1.5em');
 		}
 	}
 }
@@ -2735,7 +2732,7 @@ function themeToColors(accentColor) {
 	return ac1;
 }
 
-// alphabits quick scroll
+// Alphabits quick search
 $('#index-genres li').on('click', function(e) {
 	listLook('genresList li', 'genres', $(this).text());
 });
@@ -2743,10 +2740,14 @@ $('#index-artists li').on('click', function(e) {
 	listLook('artistsList li', 'artists', $(this).text());
 });
 $('#index-albums li').on('click', function(e) {
-	listLook('albumsList li', 'albums', $(this).text());
+    // .artist-name or .album-name
+    var selector = '.' + SESSION.json['library_album_grouping'].toLowerCase() + '-name'
+    listLook('albumsList li ' + selector, 'albums', $(this).text());
 });
 $('#index-albumcovers li').on('click', function(e) {
-	listLook('albumcovers li div span', 'albumcovers', $(this).text());
+    // .artist-name or .album-name
+    var selector = '.' + SESSION.json['library_album_grouping'].toLowerCase() + '-name'
+    listLook('albumcovers li ' + selector, 'albumcovers', $(this).text());
 });
 $('#index-browse li').on('click', function(e) {
 	listLook('database li', 'db', $(this).text());
@@ -2759,7 +2760,8 @@ function listLook(list, name, search) {
 	if (search != '#') {
 		$('#' + list).each(function(){
 			var text = removeArticles($(this).text().toLowerCase());
-			if (text.indexOf(search) == 0) {
+			//if (text.indexOf(search) == 0) {
+            if (text.substr(0, 1) == search) {
 				return false;
 			}
 			alphabitsFilter++;

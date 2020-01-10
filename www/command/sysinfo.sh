@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# 2019-09-12 TC moOde 6.2.1
+# 2019-11-24 TC moOde 6.4.0
 #
 
 # check for sudo
@@ -102,8 +102,9 @@ AUDIO_PARAMETERS() {
 	echo -e "A U D I O   P A R A M E T E R S"
 	echo -e "\nAudio device\t\t= $audiodevname\c"
 	echo -e "\nInterface\t\t= $iface\c"
-	echo -e "\nHardware volume\t\t= $hwvol\c"
 	echo -e "\nMixer name\t\t= $volmixer\c"
+	echo -e "\nHardware volume\t\t= $hwvol\c"
+	echo -e "\nMax ALSA volume\t\t= $alsavolume_max\c"
 	echo -e "\nAudio source\t\t= $audioin\c"
 	echo -e "\nOutput device\t\t= $audioout\c"
 	echo -e "\nResume MPD\t\t= $rsmafterinp\c"
@@ -114,8 +115,10 @@ AUDIO_PARAMETERS() {
 	echo -e "\nALSA version\t\t= $ALSAVER\c"
 	echo -e "\nSoX version\t\t= $SOXVER\c"
 	echo -e "\n\c"
-	echo -e "\nBluetooth controller\t= $btsvc\c"
-	echo -e "\nPairing agent\t\t= $pairing_agent\c"
+	if [ $(($feat_bitmask & $FEAT_BLUETOOTH)) -ne 0 ]; then
+		echo -e "\nBluetooth controller\t= $btsvc\c"
+		echo -e "\nPairing agent\t\t= $pairing_agent\c"
+	fi
 	if [ $(($feat_bitmask & $FEAT_AIRPLAY)) -ne 0 ]; then
 		echo -e "\nAirplay receiver\t= $airplaysvc\c"
 	fi
@@ -208,12 +211,14 @@ MPD_SETTINGS() {
 	#echo -e "\nHardware period time\t= $period_time\n"
 }
 RENDERER_SETTINGS() {
-	echo -e "B L U E T O O T H   S E T T I N G S"
-	echo -e "\nBluetooth ver\t\t= $BTVER\c"
-	echo -e "\nBluealsa ver\t\t= $BAVER\c"
-	echo -e "\nSpeaker sharing\t\t= $btmulti\c"
-	echo -e "\nResume MPD\t\t= $rsmafterbt\c"
-	echo -e "\nPCM buffer time\t\t= $bluez_pcm_buffer (\u03bcs)\n"
+	if [ $(($feat_bitmask & $FEAT_BLUETOOTH)) -ne 0 ]; then
+		echo -e "B L U E T O O T H   S E T T I N G S"
+		echo -e "\nBluetooth ver\t\t= $BTVER\c"
+		echo -e "\nBluealsa ver\t\t= $BAVER\c"
+		echo -e "\nSpeaker sharing\t\t= $btmulti\c"
+		echo -e "\nResume MPD\t\t= $rsmafterbt\c"
+		echo -e "\nPCM buffer time\t\t= $bluez_pcm_buffer ($micro_symbol)\n"
+	fi
 
 	if [ $(($feat_bitmask & $FEAT_AIRPLAY)) -ne 0 ]; then
 		SPSVER="$(shairport-sync -V | cut -f 1 -d '-')"
@@ -226,6 +231,7 @@ RENDERER_SETTINGS() {
 		echo -e "\nOutput sample rate\t= $output_rate\c"
 		echo -e "\nSession interruption\t= $allow_session_interruption\c"
 		echo -e "\nSession timeout\t\t= $session_timeout (ms)\c"
+		echo -e "\nLatency offset\t\t= $audio_backend_latency_offset_in_seconds (secs)\c"
 		echo -e "\nAudio buffer\t\t= $audio_backend_buffer_desired_length_in_seconds (secs)\c"
 		echo -e "\nResume MPD\t\t= $rsmafterapl\n"
 	fi
@@ -263,6 +269,7 @@ RENDERER_SETTINGS() {
 		echo -e "\nLocal UI display\t= $localui\c"
 		echo -e "\nMouse cursor\t\t= $touchscn\c"
 		echo -e "\nScreen blank\t\t= $scnblank Secs\c"
+		echo -e "\nWake display on play\t= $wake_display\c"
 		echo -e "\nBrightness\t\t= $scnbrightness\c"
 		echo -e "\nPixel aspect ratio\t= $pixel_aspect_ratio\c"
 		echo -e "\nRotate screen\t\t= $scnrotate Deg\n"
@@ -291,6 +298,7 @@ FEAT_UPMPDCLI=2#0000000000100000
 FEAT_SPOTIFY=2#0000100000000000
 FEAT_GPIO=2#0001000000000000
 FEAT_DJMOUNT=2#0010000000000000
+FEAT_BLUETOOTH=2#0100000000000000
 
 HOSTNAME=`uname -n`
 RASPBIANVER=`cat /etc/debian_version`
@@ -325,7 +333,7 @@ if [ "$WLAN0MAC" = "" ]; then
 fi
 
 TMP="$(df | grep /dev/root | awk '{print $2}')"
-if [[ $TMP -gt 3000000 ]]; then
+if [[ $TMP -gt 3500000 ]]; then
 	FSEXPAND="expanded"
 else
 	FSEXPAND="not expanded"
@@ -353,7 +361,7 @@ TEMP=`awk '{printf "%3.1f\302\260C\n", $1/1000}' /sys/class/thermal/thermal_zone
 SDFREQ=$(grep "actual clock" /sys/kernel/debug/mmc0/ios | awk ' {print $3/1000000}')
 
 
-PHPVER=$(php -v 2>&1 | awk 'FNR==1{ print $2 }' | cut -c-5)
+PHPVER=$(php -v 2>&1 | awk -F "-" 'NR==1{ print $1 }' | cut -f 2 -d " ")
 NGINXVER=$(nginx -v 2>&1 | awk '{ print  $3 }' | cut -c7-)
 SQLITEVER=$(sqlite3 -version | awk '{ print  $1 }')
 BTVER=$(bluetoothd -v)
@@ -381,7 +389,8 @@ output_format=${arr[3]}
 output_rate=${arr[4]}
 allow_session_interruption=${arr[5]}
 session_timeout=${arr[6]}
-audio_backend_buffer_desired_length_in_seconds=${arr[7]}
+audio_backend_latency_offset_in_seconds=${arr[7]}
+audio_backend_buffer_desired_length_in_seconds=${arr[8]}
 
 # MPD settings, r45b
 RESULT=$(sqlite3 $SQLDB "select value from cfg_mpd where param in (
@@ -476,7 +485,7 @@ timecountup=${arr[29]}
 accentcolor=${arr[30]}
 volknob=${arr[31]}
 [[ "${arr[32]}" = "1" ]] && volmute="Muted" || volmute="Unmuted"
-RESERVED_34=${arr[33]}
+alsavolume_max=${arr[33]}
 alsavolume=${arr[34]}
 amixname=${arr[35]}
 mpdmixer=${arr[36]}
@@ -586,6 +595,7 @@ volknob_mpd=${arr[123]}
 volknob_preamp=${arr[124]}
 library_album_grouping=${arr[125]}
 kernel_architecture=${arr[126]}
+[[ "${arr[127]}" = "1" ]] && wake_display="On" || wake_display="Off"
 
 # Network settings
 RESULT=$(sqlite3 $SQLDB "select * from cfg_network")
@@ -627,6 +637,12 @@ test -f /proc/config.gz && {
 	HZ="No /proc/config.gz"
 }
 rmmod configs
+
+if [[ "$1" = "html" ]]; then
+	micro_symbol="&micro;s"
+else
+	micro_symbol="\u03bcs"
+fi
 
 #
 # Generate output

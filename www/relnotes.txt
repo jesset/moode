@@ -11,6 +11,58 @@
 
 ########################################################
 //
+// 6.4.0 2019-11-24
+//
+########################################################
+
+New features
+
+- NEW: Option to wake display when audio starts playing
+
+Updates
+
+- UPD: Bump to Raspbian Buster Lite 10.2
+- UPD: Bump to PHP 7.3.11 build 10/26/19
+- UPD: Bump to Linux kernel 4.19.83 build #1277
+- UPD: Bump to Bluez-alsa 2.0.0
+- UPD: Bump to MPD 0.21.16
+- UPD: Bump to shairport-sync 3.3.5 w/mqtt support
+- UPD: Bump to alsa-capabilities 2.0.1
+- UPD: Bump to moodeutl 1.3.1
+- UPD: Deprecate MPD 0.20.23 and make 0.21.16 the default
+- UPD: Tag View album list gets same grouping as Album View
+- UPD: Hide quick jump index if grouping albums by year
+- UPD: Quick jump to artist if grouping by Artist
+- UPD: Add network interface info to Moode log
+- UPD: Add max ALSA volume setting to Audio Config
+- UPD: Add HifiBerry DAC/DAC+ Zero to audio device table
+- UPD: Add option -F to moodeutl to print sample rates
+- UPD: Add eye icon for show/hide password plaintext
+- UPD: Add XFS filesystem support to udisks-glue
+- UPD: Add hdmi_blanking=1 to /boot/config.txt
+- UPD: Add xfsprogs package for xfs file system support
+- UPD: Improve Gpio-buttons Python 2/3 compatibility
+- UPD: Change a2dp auto-connect rule to avoid UDEV sandboxing
+
+Radio stations
+
+- UPD: Playable URL for Jazz24
+
+Bug fixes
+
+- FIX: Pi-4B / Allo Katana driver load failure
+- FIX: JSON encode fail in genLibrary() if bad UTF-8 chars
+- FIX: Wrong symbol code used for microseconds in html Sysinfo
+- FIX: Swap file not disabled during build
+- FIX: PSK not generated when password contains certain chars
+- FIX: Date parsing in function genLibraryUTF8Rep()
+- FIX: Line wrap in Library Tag and Album views
+- FIX: Time knob counter left position and radio badge width
+- FIX: Airplay settings section of Sysinfo
+- FIX: File system expand test in Sysinfo
+
+########################################################
+//
 // 6.3.0 2019-10-02
 //
 ########################################################

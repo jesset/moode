@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * 2019-10-02 TC moOde 6.3.0
+ * 2019-11-24 TC moOde 6.4.0
  *
  */
 
@@ -229,6 +229,14 @@ if (isset($_POST['update_scnblank'])) {
     }
 }
 
+// Wake display
+if (isset($_POST['update_wake_display'])) {
+    if (isset($_POST['wake_display']) && $_POST['wake_display'] != $_SESSION['wake_display']) {
+		$_SESSION['notify']['title'] = $_POST['wake_display'] == '1' ? 'Wake display on' : 'Wake display off';
+        playerSession('write', 'wake_display', $_POST['wake_display']);
+    }
+}
+
 // Screen brightness
 if (isset($_POST['update_scnbrightness'])) {
     if (isset($_POST['scnbrightness']) && $_POST['scnbrightness'] != $_SESSION['scnbrightness']) {
@@ -337,7 +345,7 @@ if ($_SESSION['feat_bitmask'] & FEAT_KERNEL) {
 	$model = substr($_SESSION['hdwrrev'], 3, 1);
 	$name = $_SESSION['hdwrrev'];
 	// Pi-2B rev 1.2, Allo USBridge SIG, Pi-3B/B+/A+, Pi-4B
-	if ($name == 'Pi-2B 1GB v1.2' || $name == 'Allo USBridge SIG [Pi-CM3+ Lite 1GB v1.0]' || $model == '3' || $model == '4') {
+	if ($name == 'Pi-2B 1GB v1.2' || $name == 'Allo USBridge SIG [CM3+ Lite 1GB v1.0]' || $model == '3' || $model == '4') {
 		$_select['kernel_architecture'] .= "<option value=\"64-bit\" " . (($_SESSION['kernel_architecture'] == '64-bit') ? "selected" : "") . ">64-bit</option>\n";
 	}
 }
@@ -435,6 +443,10 @@ if ($_SESSION['feat_bitmask'] & FEAT_LOCALUI) {
 	// touch capability
 	$_select['touchscn1'] .= "<input type=\"radio\" name=\"touchscn\" id=\"toggletouchscn1\" value=\"1\" " . (($_SESSION['touchscn'] == 1) ? "checked=\"checked\"" : "") . ">\n";
 	$_select['touchscn0'] .= "<input type=\"radio\" name=\"touchscn\" id=\"toggletouchscn2\" value=\"0\" " . (($_SESSION['touchscn'] == 0) ? "checked=\"checked\"" : "") . ">\n";
+
+	// Wake display
+	$_select['wake_display1'] .= "<input type=\"radio\" name=\"wake_display\" id=\"toggle_wake_display1\" value=\"1\" " . (($_SESSION['wake_display'] == 1) ? "checked=\"checked\"" : "") . ">\n";
+	$_select['wake_display0'] .= "<input type=\"radio\" name=\"wake_display\" id=\"toggle_wake_display2\" value=\"0\" " . (($_SESSION['wake_display'] == 0) ? "checked=\"checked\"" : "") . ">\n";
 
 	// screen blank
 	$_select['scnblank'] .= "<option value=\"off\" " . (($_SESSION['scnblank'] == 'off') ? "selected" : "") . ">Never</option>\n";
