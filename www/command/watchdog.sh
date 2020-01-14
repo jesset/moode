@@ -58,6 +58,10 @@ while true; do
 		systemctl start mpd
 	fi
 
+	# MPD sacd dst decoding
+    # ps -eL -o lwp,psr,comm,args |grep /usr/local/bin/mpd | awk '($3~"decoder:sacdiso"){print "taskset -pc "NR % 4,$1}' | bash -x
+    # ps -eL -o lwp,psr,comm,args |grep /usr/local/bin/mpd | awk '($3~"output:ALSA"){print "taskset -pc 3",$1}' | bash -x
+
 	# Librespot
 	RESULT=$(sqlite3 $SQL_DB "SELECT value FROM cfg_system WHERE param='spotifysvc'")
 	if [[ $RESULT = "1" ]]; then
