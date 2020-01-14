@@ -42,6 +42,7 @@ sudo cp -v /var/local/www/db/moode-sqlite3.db.default /var/local/www/db/moode-sq
 sqlite3 /var/local/www/db/moode-sqlite3.db "update cfg_system set value=0 where param='p3bt'"
 sqlite3 /var/local/www/db/moode-sqlite3.db "update cfg_system set value=0 where param='hdmiport'"
 sqlite3 /var/local/www/db/moode-sqlite3.db "update cfg_system set value='Asia/Shanghai' where param='timezone'"
+sqlite3 /var/local/www/db/moode-sqlite3.db "update cfg_system set value='performance' where param='cpugov'"
 
 sqlite3 /var/local/www/db/moode-sqlite3.db "drop trigger if exists ro_columns"
 sqlite3 /var/local/www/db/moode-sqlite3.db "update cfg_hash set action = 'warning'"
